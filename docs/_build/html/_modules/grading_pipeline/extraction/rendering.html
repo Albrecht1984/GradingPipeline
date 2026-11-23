@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.extraction.rendering &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../../genindex.html" />
+    <link rel="search" title="Suche" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.extraction.rendering</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Bereitet PDF- und Bilddateien als nummerierte Seitenartefakte vor.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+
+
+<span class="n">IMAGE_MIMETYPES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;.png&quot;</span><span class="p">:</span> <span class="s2">&quot;image/png&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;.jpg&quot;</span><span class="p">:</span> <span class="s2">&quot;image/jpeg&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;.jpeg&quot;</span><span class="p">:</span> <span class="s2">&quot;image/jpeg&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;.webp&quot;</span><span class="p">:</span> <span class="s2">&quot;image/webp&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;.bmp&quot;</span><span class="p">:</span> <span class="s2">&quot;image/bmp&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;.tif&quot;</span><span class="p">:</span> <span class="s2">&quot;image/tiff&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;.tiff&quot;</span><span class="p">:</span> <span class="s2">&quot;image/tiff&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="RenderedPage">
+<a class="viewcode-back" href="../../../api/developer/infrastructure.html#grading_pipeline.extraction.rendering.RenderedPage">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RenderedPage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Beschreibt eine einsbasiert nummerierte, vorbereitete Dokumentseite.&quot;&quot;&quot;</span>
+
+    <span class="n">page_number</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">height</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="render_input">
+<a class="viewcode-back" href="../../../api/developer/infrastructure.html#grading_pipeline.extraction.rendering.render_input">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render_input</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">pages_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">220</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">RenderedPage</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bereitet eine PDF- oder Bilddatei im angegebenen Seitenordner vor.</span>
+
+<span class="sd">    PDFs werden vollständig und einsbasiert nummeriert als PNG gerendert.</span>
+<span class="sd">    Unterstützte Einzelbilder werden unverändert unter einem normalisierten</span>
+<span class="sd">    Seitennamen kopiert. Gleichnamige Zieldateien werden überschrieben;</span>
+<span class="sd">    andere vorhandene Dateien im Seitenordner bleiben unberührt.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        source: Pfad zur vorhandenen PDF- oder Bilddatei.</span>
+<span class="sd">        pages_dir: Zielordner für die vorbereiteten Seitenbilder.</span>
+<span class="sd">        dpi: Renderauflösung für PDFs; mindestens 72 dpi.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Die vorbereiteten Seiten in ihrer Dokumentreihenfolge.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError: Wenn ``source`` keine vorhandene Datei ist.</span>
+<span class="sd">        ValueError: Bei zu geringer Auflösung oder nicht unterstützter Endung.</span>
+<span class="sd">        RuntimeError: Wenn die benötigte PyMuPDF-Abhängigkeit fehlt.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">source</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Eingabedatei nicht gefunden: </span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dpi</span> <span class="o">&lt;</span> <span class="mi">72</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Die Render-Aufloesung muss mindestens 72 dpi betragen.&quot;</span><span class="p">)</span>
+
+    <span class="n">pages_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">suffix</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.pdf&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_render_pdf</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">pages_dir</span><span class="p">,</span> <span class="n">dpi</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">IMAGE_MIMETYPES</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">_copy_image</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">pages_dir</span><span class="p">)]</span>
+    <span class="n">supported</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&quot;.pdf&quot;</span><span class="p">,</span> <span class="o">*</span><span class="nb">sorted</span><span class="p">(</span><span class="n">IMAGE_MIMETYPES</span><span class="p">)])</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Nicht unterstuetztes Eingabeformat </span><span class="si">{</span><span class="n">suffix</span><span class="si">!r}</span><span class="s2">. Erlaubt: </span><span class="si">{</span><span class="n">supported</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_render_pdf</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">pages_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dpi</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">RenderedPage</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rendert alle PDF-Seiten als RGB-PNG.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">fitz</span>
+    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="s2">&quot;PyMuPDF fehlt. Installiere die Abhaengigkeiten aus requirements.txt.&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+    <span class="n">document</span> <span class="o">=</span> <span class="n">fitz</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">document</span><span class="o">.</span><span class="n">page_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Das PDF enthaelt keine Seiten: </span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">dpi</span> <span class="o">/</span> <span class="mf">72.0</span>
+        <span class="n">matrix</span> <span class="o">=</span> <span class="n">fitz</span><span class="o">.</span><span class="n">Matrix</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+        <span class="n">pages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">RenderedPage</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">page</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">pixmap</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">get_pixmap</span><span class="p">(</span><span class="n">matrix</span><span class="o">=</span><span class="n">matrix</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">pages_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;page_</span><span class="si">{</span><span class="n">index</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.png&quot;</span>
+            <span class="n">pixmap</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+            <span class="n">pages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">RenderedPage</span><span class="p">(</span>
+                    <span class="n">page_number</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+                    <span class="n">path</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+                    <span class="n">width</span><span class="o">=</span><span class="n">pixmap</span><span class="o">.</span><span class="n">width</span><span class="p">,</span>
+                    <span class="n">height</span><span class="o">=</span><span class="n">pixmap</span><span class="o">.</span><span class="n">height</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">pages</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">document</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_copy_image</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">pages_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RenderedPage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Kopiert ein Einzelbild samt Metadaten und ermittelt seine Pixelmaße.&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">fitz</span>
+    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="s2">&quot;PyMuPDF fehlt. Installiere die Abhaengigkeiten aus requirements.txt.&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+    <span class="n">target</span> <span class="o">=</span> <span class="n">pages_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;page_001</span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+    <span class="n">pixmap</span> <span class="o">=</span> <span class="n">fitz</span><span class="o">.</span><span class="n">Pixmap</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">))</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RenderedPage</span><span class="p">(</span>
+            <span class="n">page_number</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+            <span class="n">width</span><span class="o">=</span><span class="n">pixmap</span><span class="o">.</span><span class="n">width</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="n">pixmap</span><span class="o">.</span><span class="n">height</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">pixmap</span> <span class="o">=</span> <span class="kc">None</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

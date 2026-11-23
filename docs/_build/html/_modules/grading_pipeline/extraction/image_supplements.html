@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.extraction.image_supplements &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../../genindex.html" />
+    <link rel="search" title="Suche" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.extraction.image_supplements</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Erzeugt deterministische Bildsupplemente aus den BBOX-Platzhaltern.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">PIL</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span><span class="p">,</span> <span class="n">ImageDraw</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.hashing</span><span class="w"> </span><span class="kn">import</span> <span class="n">sha256_file</span><span class="p">,</span> <span class="n">sha256_text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.json_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_required_json_object</span><span class="p">,</span> <span class="n">write_json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.pipeline_artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="n">preferred_reviewed_artifact</span>
+
+
+<span class="n">SUPPLEMENTS_DIRNAME</span> <span class="o">=</span> <span class="s2">&quot;03_image_supplements&quot;</span>
+<span class="n">SUPPLEMENTS_MANIFEST_FILENAME</span> <span class="o">=</span> <span class="s2">&quot;manifest.json&quot;</span>
+<span class="n">IMAGE_REFERENCE_FIELD</span> <span class="o">=</span> <span class="s2">&quot;image_supplement_refs&quot;</span>
+<span class="n">DOCUMENT_TYPES</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;assignment&quot;</span><span class="p">,</span> <span class="s2">&quot;reference_solution&quot;</span><span class="p">,</span> <span class="s2">&quot;student_solution&quot;</span><span class="p">}</span>
+<span class="n">DOCUMENT_TYPE_FILENAME_PREFIXES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;assignment&quot;</span><span class="p">:</span> <span class="s2">&quot;asg&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;reference_solution&quot;</span><span class="p">:</span> <span class="s2">&quot;ref&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;student_solution&quot;</span><span class="p">:</span> <span class="s2">&quot;stu&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">PAGE_MARKER</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&lt;!--\s*Seite\s+(?P&lt;page&gt;\d+)\s*--&gt;&quot;</span><span class="p">)</span>
+<span class="n">OBJECT_MARKER</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">r</span><span class="s2">&quot;\[OBJEKT\s*\|\s*BBOX:\s*&quot;</span>
+    <span class="sa">r</span><span class="s2">&quot;\(\s*(?P&lt;x1&gt;\d+(?:\.\d+)?)\s*,\s*(?P&lt;y1&gt;\d+(?:\.\d+)?)\s*&quot;</span>
+    <span class="sa">r</span><span class="s2">&quot;(?:\)\s*-\s*\(\s*|,\s*)&quot;</span>
+    <span class="sa">r</span><span class="s2">&quot;(?P&lt;x2&gt;\d+(?:\.\d+)?)\s*,\s*(?P&lt;y2&gt;\d+(?:\.\d+)?)\s*\)\s*\]&quot;</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="ImageSupplementPreparation">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.image_supplements.ImageSupplementPreparation">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImageSupplementPreparation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Beschreibt annotiertes Markdown und erzeugte Supplementartefakte.&quot;&quot;&quot;</span>
+
+    <span class="n">markdown</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">manifest_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">image_count</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="prepare_document_image_supplements">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.image_supplements.prepare_document_image_supplements">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">prepare_document_image_supplements</span><span class="p">(</span>
+    <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageSupplementPreparation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erzeugt Supplemente bevorzugt aus Reviewed-, sonst aus Raw-Markdown.&quot;&quot;&quot;</span>
+
+    <span class="n">document_dir</span> <span class="o">=</span> <span class="n">document_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="n">source_path</span> <span class="o">=</span> <span class="n">preferred_reviewed_artifact</span><span class="p">(</span>
+        <span class="n">document_dir</span><span class="p">,</span>
+        <span class="n">raw_filename</span><span class="o">=</span><span class="s2">&quot;03_vlm_export.raw.md&quot;</span><span class="p">,</span>
+        <span class="n">reviewed_filename</span><span class="o">=</span><span class="s2">&quot;03_vlm_export.reviewed.md&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">source_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Visual-Extraction-Markdown nicht gefunden: </span><span class="si">{</span><span class="n">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">source_markdown</span> <span class="o">=</span> <span class="n">source_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">source_markdown</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Visual-Extraction-Markdown ist leer: </span><span class="si">{</span><span class="n">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">prepare_image_supplements</span><span class="p">(</span>
+        <span class="n">document_dir</span><span class="p">,</span>
+        <span class="n">source_markdown</span><span class="p">,</span>
+        <span class="n">document_type</span><span class="o">=</span><span class="n">document_type</span><span class="p">,</span>
+        <span class="n">source_markdown_path</span><span class="o">=</span><span class="n">source_path</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="prepare_image_supplements">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.image_supplements.prepare_image_supplements">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">prepare_image_supplements</span><span class="p">(</span>
+    <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">source_markdown</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">source_markdown_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageSupplementPreparation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Schneidet markierte Objekte aus und vergibt dokumentweit eindeutige IDs.&quot;&quot;&quot;</span>
+
+    <span class="n">source_markdown</span> <span class="o">=</span> <span class="n">source_markdown</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">markers</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">OBJECT_MARKER</span><span class="o">.</span><span class="n">finditer</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">))</span>
+    <span class="n">document_path</span> <span class="o">=</span> <span class="n">document_dir</span> <span class="o">/</span> <span class="s2">&quot;03_vlm_document.raw.json&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">markers</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">document_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">ImageSupplementPreparation</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">document_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">DOCUMENT_TYPES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unbekannter Dokumenttyp fuer Bildsupplemente: </span><span class="si">{</span><span class="n">document_type</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">document</span> <span class="o">=</span> <span class="n">read_required_json_object</span><span class="p">(</span>
+        <span class="n">document_path</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Dokumentmanifest der Visual Extraction&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">source_sha256</span> <span class="o">=</span> <span class="n">_source_sha256</span><span class="p">(</span><span class="n">document</span><span class="p">)</span>
+    <span class="n">document_uid</span> <span class="o">=</span> <span class="n">source_sha256</span><span class="p">[:</span><span class="mi">12</span><span class="p">]</span>
+    <span class="n">markdown_sha256</span> <span class="o">=</span> <span class="n">sha256_text</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">)</span>
+    <span class="n">extraction_uid</span> <span class="o">=</span> <span class="n">markdown_sha256</span><span class="p">[:</span><span class="mi">12</span><span class="p">]</span>
+    <span class="n">image_namespace</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">document_type</span><span class="si">}</span><span class="s2">__</span><span class="si">{</span><span class="n">document_uid</span><span class="si">}</span><span class="s2">__</span><span class="si">{</span><span class="n">extraction_uid</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">pages</span> <span class="o">=</span> <span class="n">_page_records</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">document_dir</span><span class="p">)</span>
+    <span class="n">page_sections</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">PAGE_MARKER</span><span class="o">.</span><span class="n">finditer</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">markers</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">page_sections</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Objektplatzhalter gefunden, aber das Visual-Extraction-Markdown &quot;</span>
+            <span class="s2">&quot;enthaelt keine Seitenmarker.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">supplements_dir</span> <span class="o">=</span> <span class="n">document_dir</span> <span class="o">/</span> <span class="n">SUPPLEMENTS_DIRNAME</span>
+    <span class="n">supplements_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">overview_records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">output_parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">cursor</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">section_index</span><span class="p">,</span> <span class="n">page_match</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">page_sections</span><span class="p">):</span>
+        <span class="n">section_start</span> <span class="o">=</span> <span class="n">page_match</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">section_end</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">page_sections</span><span class="p">[</span><span class="n">section_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">section_index</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">page_sections</span><span class="p">)</span>
+            <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">output_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">[</span><span class="n">cursor</span><span class="p">:</span><span class="n">section_start</span><span class="p">])</span>
+        <span class="n">section</span> <span class="o">=</span> <span class="n">source_markdown</span><span class="p">[</span><span class="n">section_start</span><span class="p">:</span><span class="n">section_end</span><span class="p">]</span>
+        <span class="n">page_number</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">page_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;page&quot;</span><span class="p">))</span>
+        <span class="n">page</span> <span class="o">=</span> <span class="n">pages</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">page_number</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">page</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Seite </span><span class="si">{</span><span class="n">page_number</span><span class="si">}</span><span class="s2"> fehlt im Dokumentmanifest der Visual Extraction.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">annotated</span><span class="p">,</span> <span class="n">page_records</span><span class="p">,</span> <span class="n">overview_record</span> <span class="o">=</span> <span class="n">_prepare_page_supplements</span><span class="p">(</span>
+            <span class="n">section</span><span class="o">=</span><span class="n">section</span><span class="p">,</span>
+            <span class="n">page_number</span><span class="o">=</span><span class="n">page_number</span><span class="p">,</span>
+            <span class="n">page</span><span class="o">=</span><span class="n">page</span><span class="p">,</span>
+            <span class="n">document_dir</span><span class="o">=</span><span class="n">document_dir</span><span class="p">,</span>
+            <span class="n">supplements_dir</span><span class="o">=</span><span class="n">supplements_dir</span><span class="p">,</span>
+            <span class="n">image_namespace</span><span class="o">=</span><span class="n">image_namespace</span><span class="p">,</span>
+            <span class="n">document_type</span><span class="o">=</span><span class="n">document_type</span><span class="p">,</span>
+            <span class="n">document_uid</span><span class="o">=</span><span class="n">document_uid</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">output_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">annotated</span><span class="p">)</span>
+        <span class="n">records</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">page_records</span><span class="p">)</span>
+        <span class="n">overview_records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">overview_record</span><span class="p">)</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">section_end</span>
+    <span class="n">output_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">[</span><span class="n">cursor</span><span class="p">:])</span>
+
+    <span class="n">expected_paths</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="p">(</span><span class="n">document_dir</span> <span class="o">/</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]))</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="p">[</span><span class="o">*</span><span class="n">records</span><span class="p">,</span> <span class="o">*</span><span class="n">overview_records</span><span class="p">]</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="n">old_image</span> <span class="ow">in</span> <span class="n">supplements_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.png&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">old_image</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">expected_paths</span><span class="p">:</span>
+            <span class="n">old_image</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
+
+    <span class="n">manifest_path</span> <span class="o">=</span> <span class="n">supplements_dir</span> <span class="o">/</span> <span class="n">SUPPLEMENTS_MANIFEST_FILENAME</span>
+    <span class="n">write_json</span><span class="p">(</span>
+        <span class="n">manifest_path</span><span class="p">,</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;document_type&quot;</span><span class="p">:</span> <span class="n">document_type</span><span class="p">,</span>
+            <span class="s2">&quot;source_document_sha256&quot;</span><span class="p">:</span> <span class="n">source_sha256</span><span class="p">,</span>
+            <span class="s2">&quot;source_markdown&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">source_markdown_path</span><span class="o">.</span><span class="n">name</span>
+                <span class="k">if</span> <span class="n">source_markdown_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="s2">&quot;03_vlm_export.raw.md&quot;</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;source_markdown_sha256&quot;</span><span class="p">:</span> <span class="n">markdown_sha256</span><span class="p">,</span>
+            <span class="s2">&quot;images&quot;</span><span class="p">:</span> <span class="n">records</span><span class="p">,</span>
+            <span class="s2">&quot;overview_pages&quot;</span><span class="p">:</span> <span class="n">overview_records</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ImageSupplementPreparation</span><span class="p">(</span>
+        <span class="n">markdown</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_parts</span><span class="p">),</span>
+        <span class="n">manifest_path</span><span class="o">=</span><span class="n">manifest_path</span><span class="p">,</span>
+        <span class="n">image_count</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_prepared_image_supplements">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.image_supplements.load_prepared_image_supplements">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_prepared_image_supplements</span><span class="p">(</span>
+    <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">source_markdown</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">source_markdown_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ImageSupplementPreparation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft vorhandene Supplemente und ergänzt ihre IDs im Markdown.&quot;&quot;&quot;</span>
+
+    <span class="n">source_markdown</span> <span class="o">=</span> <span class="n">source_markdown</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">markers</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">OBJECT_MARKER</span><span class="o">.</span><span class="n">finditer</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">markers</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ImageSupplementPreparation</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">manifest_path</span> <span class="o">=</span> <span class="n">document_dir</span> <span class="o">/</span> <span class="n">SUPPLEMENTS_DIRNAME</span> <span class="o">/</span> <span class="n">SUPPLEMENTS_MANIFEST_FILENAME</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">manifest_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+            <span class="s2">&quot;Bildsupplement-Manifest fehlt. Bitte zuerst `prepare-images` ausfuehren: &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">manifest_path</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="n">manifest</span> <span class="o">=</span> <span class="n">read_required_json_object</span><span class="p">(</span>
+        <span class="n">manifest_path</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Bildsupplement-Manifest&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">expected_hash</span> <span class="o">=</span> <span class="n">sha256_text</span><span class="p">(</span><span class="n">source_markdown</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;document_type&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">document_type</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Bildsupplement-Manifest hat einen anderen Dokumenttyp. &quot;</span>
+            <span class="s2">&quot;Bitte `prepare-images` erneut ausfuehren.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_markdown&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">source_markdown_path</span><span class="o">.</span><span class="n">name</span>
+        <span class="ow">or</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_markdown_sha256&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">expected_hash</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Bildsupplemente passen nicht zur verwendeten Visual-Extraction-Fassung. &quot;</span>
+            <span class="s2">&quot;Bitte `prepare-images` erneut ausfuehren.&quot;</span>
+        <span class="p">)</span>
+    <span class="n">raw_records</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;images&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_records</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_records</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">markers</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Bildsupplement-Manifest und Objektmarker haben unterschiedliche Umfaenge. &quot;</span>
+            <span class="s2">&quot;Bitte `prepare-images` erneut ausfuehren.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">record_index</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">replace</span><span class="p">(</span><span class="n">match</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">Match</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Setzt die geprüfte Manifest-ID in einen Objektmarker ein.&quot;&quot;&quot;</span>
+
+        <span class="k">nonlocal</span> <span class="n">record_index</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="n">raw_records</span><span class="p">[</span><span class="n">record_index</span><span class="p">]</span>
+        <span class="n">record_index</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">),</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Bildsupplement-Manifest enthaelt einen ungueltigen Bildeintrag.&quot;</span><span class="p">)</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="n">name</span><span class="p">))</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;x1&quot;</span><span class="p">,</span> <span class="s2">&quot;y1&quot;</span><span class="p">,</span> <span class="s2">&quot;x2&quot;</span><span class="p">,</span> <span class="s2">&quot;y2&quot;</span><span class="p">))</span>
+        <span class="n">manifest_bbox</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bbox_normalized&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manifest_bbox</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="n">manifest_bbox</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">bbox</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Bildsupplement-Manifest enthaelt abweichende BBOX-Koordinaten. &quot;</span>
+                <span class="s2">&quot;Bitte `prepare-images` erneut ausfuehren.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="p">(</span><span class="n">_format_coordinate</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">bbox</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;[OBJEKT | ID: </span><span class="si">{</span><span class="n">record</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> | &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;BBOX: (</span><span class="si">{</span><span class="n">x1</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y1</span><span class="si">}</span><span class="s2">)-(</span><span class="si">{</span><span class="n">x2</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y2</span><span class="si">}</span><span class="s2">)]&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">annotated</span> <span class="o">=</span> <span class="n">OBJECT_MARKER</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">replace</span><span class="p">,</span> <span class="n">source_markdown</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ImageSupplementPreparation</span><span class="p">(</span><span class="n">annotated</span><span class="p">,</span> <span class="n">manifest_path</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_records</span><span class="p">))</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_page_records</span><span class="p">(</span>
+    <span class="n">document</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Indiziert und validiert die Seiten aus dem Visual-Extraction-Manifest.&quot;&quot;&quot;</span>
+
+    <span class="n">raw_pages</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pages&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_pages</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Das Dokumentmanifest enthaelt keine gueltige Seitenliste.&quot;</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">raw_page</span> <span class="ow">in</span> <span class="n">raw_pages</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_page</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_page</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;page_no&quot;</span><span class="p">),</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Das Dokumentmanifest enthaelt einen ungueltigen Seiteneintrag.&quot;</span><span class="p">)</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">raw_page</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">),</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Ein Seiteneintrag enthaelt keinen gueltigen Bildpfad.&quot;</span><span class="p">)</span>
+        <span class="n">image_path</span> <span class="o">=</span> <span class="n">_resolve_inside</span><span class="p">(</span><span class="n">document_dir</span><span class="p">,</span> <span class="n">image</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">image_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gerendertes Seitenbild nicht gefunden: </span><span class="si">{</span><span class="n">image_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">raw_page</span><span class="p">[</span><span class="s2">&quot;page_no&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">raw_page</span><span class="p">,</span> <span class="s2">&quot;resolved_image_path&quot;</span><span class="p">:</span> <span class="n">image_path</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_source_sha256</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Liest den vollständigen SHA-256-Hash des ursprünglichen Dokuments.&quot;&quot;&quot;</span>
+
+    <span class="n">origin</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;origin&quot;</span><span class="p">)</span>
+    <span class="n">source_hash</span> <span class="o">=</span> <span class="n">origin</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;binary_hash_sha256&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source_hash</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="ow">or</span> <span class="n">re</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[0-9a-fA-F]</span><span class="si">{64}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">source_hash</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Das Dokumentmanifest enthaelt keinen gueltigen &quot;</span>
+            <span class="s2">&quot;origin.binary_hash_sha256.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">source_hash</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_prepare_page_supplements</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">section</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">page_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">page</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">supplements_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">image_namespace</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">document_uid</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erzeugt Ausschnitte, Marker und die BBOX-Übersicht einer Seite.&quot;&quot;&quot;</span>
+
+    <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">image_path</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;resolved_image_path&quot;</span><span class="p">]</span>
+    <span class="k">with</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">page_image</span><span class="p">:</span>
+        <span class="n">width</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">page_image</span><span class="o">.</span><span class="n">size</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">replace</span><span class="p">(</span><span class="n">match</span><span class="p">:</span> <span class="n">re</span><span class="o">.</span><span class="n">Match</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Ersetzt einen Marker durch seine ID und schreibt den Bildausschnitt.&quot;&quot;&quot;</span>
+
+            <span class="n">bbox</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="n">name</span><span class="p">))</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;x1&quot;</span><span class="p">,</span> <span class="s2">&quot;y1&quot;</span><span class="p">,</span> <span class="s2">&quot;x2&quot;</span><span class="p">,</span> <span class="s2">&quot;y2&quot;</span><span class="p">))</span>
+            <span class="n">_validate_normalized_bbox</span><span class="p">(</span><span class="n">bbox</span><span class="p">,</span> <span class="n">page_number</span><span class="p">)</span>
+            <span class="n">object_number</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">image_id</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">image_namespace</span><span class="si">}</span><span class="s2">__p</span><span class="si">{</span><span class="n">page_number</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">__img</span><span class="si">{</span><span class="n">object_number</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">pixel_bbox</span> <span class="o">=</span> <span class="n">_pixel_bbox</span><span class="p">(</span><span class="n">bbox</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="n">height</span><span class="p">)</span>
+            <span class="n">output_path</span> <span class="o">=</span> <span class="n">supplements_dir</span> <span class="o">/</span> <span class="n">_image_filename</span><span class="p">(</span>
+                <span class="n">document_type</span><span class="o">=</span><span class="n">document_type</span><span class="p">,</span>
+                <span class="n">document_uid</span><span class="o">=</span><span class="n">document_uid</span><span class="p">,</span>
+                <span class="n">page_number</span><span class="o">=</span><span class="n">page_number</span><span class="p">,</span>
+                <span class="n">object_number</span><span class="o">=</span><span class="n">object_number</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">page_image</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">pixel_bbox</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;PNG&quot;</span><span class="p">)</span>
+            <span class="n">relative_output</span> <span class="o">=</span> <span class="n">output_path</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">document_dir</span><span class="p">)</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+            <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">image_id</span><span class="p">,</span>
+                    <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">relative_output</span><span class="p">,</span>
+                    <span class="s2">&quot;source_page&quot;</span><span class="p">:</span> <span class="n">page_number</span><span class="p">,</span>
+                    <span class="s2">&quot;bbox_normalized&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">bbox</span><span class="p">),</span>
+                    <span class="s2">&quot;bbox_pixels&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">pixel_bbox</span><span class="p">),</span>
+                    <span class="s2">&quot;source_page_image&quot;</span><span class="p">:</span> <span class="n">image_path</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">document_dir</span><span class="p">)</span><span class="o">.</span><span class="n">as_posix</span><span class="p">(),</span>
+                    <span class="s2">&quot;sha256&quot;</span><span class="p">:</span> <span class="n">sha256_file</span><span class="p">(</span><span class="n">output_path</span><span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_format_coordinate</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">bbox</span><span class="p">)</span>
+            <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;, &quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[OBJEKT | ID: </span><span class="si">{</span><span class="n">image_id</span><span class="si">}</span><span class="s2"> | &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;BBOX: (</span><span class="si">{</span><span class="n">x1</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y1</span><span class="si">}</span><span class="s2">)-(</span><span class="si">{</span><span class="n">x2</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">y2</span><span class="si">}</span><span class="s2">)]&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">annotated</span> <span class="o">=</span> <span class="n">OBJECT_MARKER</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">replace</span><span class="p">,</span> <span class="n">section</span><span class="p">)</span>
+        <span class="n">overview_path</span> <span class="o">=</span> <span class="n">supplements_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;overview_page_</span><span class="si">{</span><span class="n">page_number</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.png&quot;</span>
+        <span class="n">overview_image</span> <span class="o">=</span> <span class="n">page_image</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="s2">&quot;RGB&quot;</span><span class="p">)</span>
+        <span class="n">drawing</span> <span class="o">=</span> <span class="n">ImageDraw</span><span class="o">.</span><span class="n">Draw</span><span class="p">(</span><span class="n">overview_image</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
+            <span class="n">left</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="n">bottom</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;bbox_pixels&quot;</span><span class="p">]</span>
+            <span class="n">drawing</span><span class="o">.</span><span class="n">rectangle</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="n">right</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bottom</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="n">outline</span><span class="o">=</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">overview_image</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">overview_path</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;PNG&quot;</span><span class="p">)</span>
+    <span class="n">overview_record</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;source_page&quot;</span><span class="p">:</span> <span class="n">page_number</span><span class="p">,</span>
+        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">overview_path</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">document_dir</span><span class="p">)</span><span class="o">.</span><span class="n">as_posix</span><span class="p">(),</span>
+        <span class="s2">&quot;sha256&quot;</span><span class="p">:</span> <span class="n">sha256_file</span><span class="p">(</span><span class="n">overview_path</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">annotated</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">overview_record</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_image_filename</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">document_uid</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">page_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">object_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erzeugt einen kurzen, weiterhin dokumentweit eindeutigen PNG-Namen.</span>
+
+<span class="sd">    Die vollstaendige, extraktionsspezifische Bild-ID bleibt im Manifest</span>
+<span class="sd">    erhalten. Der physische Dateiname vermeidet dagegen redundante Angaben,</span>
+<span class="sd">    damit auch tiefe Windows-Experimentpfade unter MAX_PATH bleiben.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prefix</span> <span class="o">=</span> <span class="n">DOCUMENT_TYPE_FILENAME_PREFIXES</span><span class="p">[</span><span class="n">document_type</span><span class="p">]</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">__</span><span class="si">{</span><span class="n">document_uid</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">__&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;p</span><span class="si">{</span><span class="n">page_number</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">__i</span><span class="si">{</span><span class="n">object_number</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">.png&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_normalized_bbox</span><span class="p">(</span>
+    <span class="n">bbox</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+    <span class="n">page_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft die vom Extraktionsprompt geforderten normierten Koordinaten.&quot;&quot;&quot;</span>
+
+    <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">bbox</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="mi">1000</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">bbox</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Seite </span><span class="si">{</span><span class="n">page_number</span><span class="si">}</span><span class="s2">: BBOX-Koordinaten muessen zwischen 0 und 1000 liegen: </span><span class="si">{</span><span class="n">bbox</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">x2</span> <span class="o">&lt;=</span> <span class="n">x1</span> <span class="ow">or</span> <span class="n">y2</span> <span class="o">&lt;=</span> <span class="n">y1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Seite </span><span class="si">{</span><span class="n">page_number</span><span class="si">}</span><span class="s2">: BBOX hat keine positive Flaeche: </span><span class="si">{</span><span class="n">bbox</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_pixel_bbox</span><span class="p">(</span>
+    <span class="n">bbox</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Skaliert normierte Seitenkoordinaten konservativ auf Bildpixel.&quot;&quot;&quot;</span>
+
+    <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">bbox</span>
+    <span class="n">left</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">x1</span> <span class="o">*</span> <span class="n">width</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)))</span>
+    <span class="n">top</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">y1</span> <span class="o">*</span> <span class="n">height</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)))</span>
+    <span class="n">right</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">left</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">x2</span> <span class="o">*</span> <span class="n">width</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)))</span>
+    <span class="n">bottom</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">top</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">y2</span> <span class="o">*</span> <span class="n">height</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">left</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="n">bottom</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_inside</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">relative_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Löst einen relativen Artefaktpfad ausschließlich unterhalb seines Dokuments auf.&quot;&quot;&quot;</span>
+
+    <span class="n">candidate</span> <span class="o">=</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="n">relative_path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="n">resolved_root</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">candidate</span> <span class="o">==</span> <span class="n">resolved_root</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_relative_to</span><span class="p">(</span><span class="n">resolved_root</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Artefaktpfad verlaesst den Dokumentordner: </span><span class="si">{</span><span class="n">relative_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">candidate</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_format_coordinate</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Formatiert ganzzahlige normierte Koordinaten ohne Dezimalteil.&quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">))</span> <span class="k">if</span> <span class="n">value</span><span class="o">.</span><span class="n">is_integer</span><span class="p">()</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">&quot;</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

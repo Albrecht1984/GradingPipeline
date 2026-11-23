@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.infrastructure.model_calls &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../../genindex.html" />
+    <link rel="search" title="Suche" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.infrastructure.model_calls</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Gemeinsame LangChain-Modellaufrufe der Pipelinestufen.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">html</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.language_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseChatModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIMessage</span><span class="p">,</span> <span class="n">BaseMessage</span><span class="p">,</span> <span class="n">HumanMessage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_ollama</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatOllama</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatOpenAI</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.models.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">response_text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.progress</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProgressHeartbeat</span>
+
+
+<div class="viewcode-block" id="MultimodalImage">
+<a class="viewcode-back" href="../../../api/developer/infrastructure.html#grading_pipeline.infrastructure.model_calls.MultimodalImage">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MultimodalImage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bündelt Bilddatei und sichtbare ID eines Modellinputs.&quot;&quot;&quot;</span>
+
+    <span class="n">image_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span></div>
+
+
+
+<div class="viewcode-block" id="MultimodalImageGroup">
+<a class="viewcode-back" href="../../../api/developer/infrastructure.html#grading_pipeline.infrastructure.model_calls.MultimodalImageGroup">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MultimodalImageGroup</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bündelt aufeinanderfolgende Bilder derselben sichtbaren Quelle.&quot;&quot;&quot;</span>
+
+    <span class="n">label</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">images</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MultimodalImage</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="invoke_json_model">
+<a class="viewcode-back" href="../../../api/developer/infrastructure.html#grading_pipeline.infrastructure.model_calls.invoke_json_model">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">invoke_json_model</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">BaseChatModel</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">progress</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+    <span class="n">heartbeat_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">result_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">AIMessage</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ruft ein Modell im JSON-Modus auf und meldet Laufzeit und Antwortgröße.&quot;&quot;&quot;</span>
+    <span class="n">started_at</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">ProgressHeartbeat</span><span class="p">(</span><span class="n">progress</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">heartbeat_label</span><span class="p">):</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">invoke_chat_model</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span>
+            <span class="p">[</span><span class="n">HumanMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">prompt</span><span class="p">)],</span>
+            <span class="n">json_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">response_text</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">content</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Das Modell lieferte eine leere Antwort.&quot;</span><span class="p">)</span>
+    <span class="n">progress</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">result_label</span><span class="si">}</span><span class="s2">: Antwort nach </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">started_at</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> s &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;erhalten (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="si">}</span><span class="s2"> Zeichen).&quot;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">response</span><span class="p">,</span> <span class="n">started_at</span></div>
+
+
+
+<div class="viewcode-block" id="invoke_vision_model">
+<a class="viewcode-back" href="../../../api/developer/infrastructure.html#grading_pipeline.infrastructure.model_calls.invoke_vision_model">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">invoke_vision_model</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">BaseChatModel</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">image_bytes</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AIMessage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ruft ein Modell mit einer eingebetteten Bildnachricht auf.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">image_bytes</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Das Seitenbild ist leer.&quot;</span><span class="p">)</span>
+    <span class="n">media_type</span> <span class="o">=</span> <span class="n">detect_image_media_type</span><span class="p">(</span><span class="n">image_bytes</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;image/png&quot;</span>
+    <span class="n">image_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;data:</span><span class="si">{</span><span class="n">media_type</span><span class="si">}</span><span class="s2">;base64,&quot;</span> <span class="o">+</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">image_bytes</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span>
+        <span class="s2">&quot;ascii&quot;</span>
+    <span class="p">)</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">HumanMessage</span><span class="p">(</span>
+        <span class="n">content</span><span class="o">=</span><span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;image_url&quot;</span><span class="p">,</span> <span class="s2">&quot;image_url&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="n">image_url</span><span class="p">}},</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">invoke_chat_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="p">[</span><span class="n">message</span><span class="p">],</span> <span class="n">json_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="invoke_multimodal_json_model">
+<a class="viewcode-back" href="../../../api/developer/infrastructure.html#grading_pipeline.infrastructure.model_calls.invoke_multimodal_json_model">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">invoke_multimodal_json_model</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">BaseChatModel</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">image_groups</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">MultimodalImageGroup</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">progress</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+    <span class="n">heartbeat_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">result_label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">json_mode</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">AIMessage</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ruft ein Vision-Modell mit explizit gruppierten Bildern auf.&quot;&quot;&quot;</span>
+
+    <span class="n">content</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}]</span>
+    <span class="n">image_count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">image_groups</span><span class="p">:</span>
+        <span class="n">group_label</span> <span class="o">=</span> <span class="n">html</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">content</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;&lt;BILDGRUPPE quelle=&quot;</span><span class="si">{</span><span class="n">group_label</span><span class="si">}</span><span class="s1">&quot;&gt;&#39;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">images</span><span class="p">:</span>
+            <span class="n">image_bytes</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">image_bytes</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Das Bildsupplement ist leer: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">media_type</span> <span class="o">=</span> <span class="n">detect_image_media_type</span><span class="p">(</span><span class="n">image_bytes</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">media_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Nicht unterstuetztes Bildsupplement: </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">image_url</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;data:</span><span class="si">{</span><span class="n">media_type</span><span class="si">}</span><span class="s2">;base64,&quot;</span>
+                <span class="o">+</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">image_bytes</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">image_id</span> <span class="o">=</span> <span class="n">html</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">image_id</span><span class="p">,</span> <span class="n">quote</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">content</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;&lt;BILD id=&quot;</span><span class="si">{</span><span class="n">image_id</span><span class="si">}</span><span class="s1">&quot; /&gt;&#39;</span><span class="p">},</span>
+                    <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;image_url&quot;</span><span class="p">,</span> <span class="s2">&quot;image_url&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="n">image_url</span><span class="p">}},</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">image_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">content</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="s2">&quot;&lt;/BILDGRUPPE&gt;&quot;</span><span class="p">})</span>
+    <span class="n">started_at</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">ProgressHeartbeat</span><span class="p">(</span><span class="n">progress</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">heartbeat_label</span><span class="p">):</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">invoke_chat_model</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span>
+            <span class="p">[</span><span class="n">HumanMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">)],</span>
+            <span class="n">json_mode</span><span class="o">=</span><span class="n">json_mode</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">response_content</span> <span class="o">=</span> <span class="n">response_text</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">response_content</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Das Modell lieferte eine leere Antwort.&quot;</span><span class="p">)</span>
+    <span class="n">progress</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">result_label</span><span class="si">}</span><span class="s2">: Antwort nach </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">started_at</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> s &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;erhalten (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">response_content</span><span class="p">)</span><span class="si">}</span><span class="s2"> Zeichen, </span><span class="si">{</span><span class="n">image_count</span><span class="si">}</span><span class="s2"> Bild(er)).&quot;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">response</span><span class="p">,</span> <span class="n">started_at</span></div>
+
+
+
+<div class="viewcode-block" id="invoke_chat_model">
+<a class="viewcode-back" href="../../../api/developer/infrastructure.html#grading_pipeline.infrastructure.model_calls.invoke_chat_model">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">invoke_chat_model</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">BaseChatModel</span><span class="p">,</span>
+    <span class="n">messages</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">BaseMessage</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">json_mode</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AIMessage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ruft ein LangChain-Modell mit dessen providerbezogenem JSON-Schalter auf.&quot;&quot;&quot;</span>
+    <span class="n">options</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">provider</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;provider&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">json_mode</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ChatOllama</span><span class="p">)</span> <span class="ow">or</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;ollama&quot;</span><span class="p">):</span>
+        <span class="n">options</span><span class="p">[</span><span class="s2">&quot;format&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;json&quot;</span>
+    <span class="k">elif</span> <span class="n">json_mode</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ChatOpenAI</span><span class="p">)</span> <span class="ow">or</span> <span class="n">provider</span> <span class="o">==</span> <span class="s2">&quot;openai&quot;</span><span class="p">):</span>
+        <span class="n">options</span><span class="p">[</span><span class="s2">&quot;response_format&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;json_object&quot;</span><span class="p">}</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">messages</span><span class="p">),</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">AIMessage</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Das Modell lieferte keine gueltige LangChain-Antwort.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">response</span></div>
+
+
+
+<div class="viewcode-block" id="detect_image_media_type">
+<a class="viewcode-back" href="../../../api/developer/infrastructure.html#grading_pipeline.infrastructure.model_calls.detect_image_media_type">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">detect_image_media_type</span><span class="p">(</span><span class="n">image_bytes</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erkennt den MIME-Typ unterstützter Bilder anhand ihrer Dateisignatur.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">image_bytes</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x89</span><span class="s2">PNG</span><span class="se">\r\n\x1a\n</span><span class="s2">&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;image/png&quot;</span>
+    <span class="k">if</span> <span class="n">image_bytes</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\xff\xd8\xff</span><span class="s2">&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;image/jpeg&quot;</span>
+    <span class="k">if</span> <span class="n">image_bytes</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;RIFF&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">image_bytes</span><span class="p">[</span><span class="mi">8</span><span class="p">:</span><span class="mi">12</span><span class="p">]</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">&quot;WEBP&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;image/webp&quot;</span>
+    <span class="k">if</span> <span class="n">image_bytes</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="sa">b</span><span class="s2">&quot;GIF87a&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;GIF89a&quot;</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="s2">&quot;image/gif&quot;</span>
+    <span class="k">if</span> <span class="n">image_bytes</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;BM&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;image/bmp&quot;</span>
+    <span class="k">if</span> <span class="n">image_bytes</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="sa">b</span><span class="s2">&quot;II*</span><span class="se">\x00</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;MM</span><span class="se">\x00</span><span class="s2">*&quot;</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="s2">&quot;image/tiff&quot;</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

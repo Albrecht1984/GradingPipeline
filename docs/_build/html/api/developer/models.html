@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Modellprovider &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../genindex.html" />
+    <link rel="search" title="Suche" href="../../search.html" />
+    <link rel="next" title="Validierung" href="validation.html" />
+    <link rel="prev" title="Pipelines" href="pipelines.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="modellprovider">
+<h1>Modellprovider<a class="headerlink" href="#modellprovider" title="Link to this heading">¶</a></h1>
+<section id="module-grading_pipeline.models.factory">
+<span id="langchain-modellerzeugung"></span><h2>LangChain-Modellerzeugung<a class="headerlink" href="#module-grading_pipeline.models.factory" title="Link to this heading">¶</a></h2>
+<p>Konfiguration und Erzeugung der verwendeten LangChain-Chatmodelle.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.models.factory.ChatModelConfig">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.factory.</span></span><span class="sig-name descname"><span class="pre">ChatModelConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">provider</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ollama_base_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'http://localhost:11434'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ollama_num_ctx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openai_base_url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'https://api.openai.com/v1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">openai_api_key_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'OPENAI_API_KEY'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1800.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/factory.html#ChatModelConfig"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.factory.ChatModelConfig" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Bündelt die Einstellungen zur Erzeugung eines LangChain-Modells.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>provider</strong> (<em>str</em>)</p></li>
+<li><p><strong>model</strong> (<em>str</em>)</p></li>
+<li><p><strong>ollama_base_url</strong> (<em>str</em>)</p></li>
+<li><p><strong>ollama_num_ctx</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>openai_base_url</strong> (<em>str</em>)</p></li>
+<li><p><strong>openai_api_key_env</strong> (<em>str</em>)</p></li>
+<li><p><strong>timeout</strong> (<em>float</em>)</p></li>
+<li><p><strong>temperature</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.factory.create_chat_model">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.factory.</span></span><span class="sig-name descname"><span class="pre">create_chat_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/factory.html#create_chat_model"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.factory.create_chat_model" title="Link to this definition">¶</a></dt>
+<dd><p>Erzeugt unmittelbar ChatOllama oder ChatOpenAI.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config</strong> (<a class="reference internal" href="#grading_pipeline.models.factory.ChatModelConfig" title="grading_pipeline.models.factory.ChatModelConfig"><em>ChatModelConfig</em></a>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>BaseChatModel</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.models.responses">
+<span id="antwortauswertung"></span><h2>Antwortauswertung<a class="headerlink" href="#module-grading_pipeline.models.responses" title="Link to this heading">¶</a></h2>
+<p>Auswertung und Serialisierung von LangChain-Modellantworten.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.models.responses.ModelMetrics">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.responses.</span></span><span class="sig-name descname"><span class="pre">ModelMetrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resolved_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">provider_total_seconds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">provider_load_seconds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt_evaluation_seconds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generation_seconds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_tokens</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cached_input_tokens</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_tokens</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_tokens</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/responses.html#ModelMetrics"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.responses.ModelMetrics" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Normalisierte Laufzeit-, Modell- und Tokenmetriken einer AIMessage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resolved_model</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>provider_total_seconds</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>provider_load_seconds</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>prompt_evaluation_seconds</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>generation_seconds</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>input_tokens</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>cached_input_tokens</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>output_tokens</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>total_tokens</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.responses.response_artifact">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.responses.</span></span><span class="sig-name descname"><span class="pre">response_artifact</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">response</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/responses.html#response_artifact"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.responses.response_artifact" title="Link to this definition">¶</a></dt>
+<dd><p>Serialisiert eine AIMessage im stabilen Projektartefakt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>response</strong> (<em>AIMessage</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.responses.response_text">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.responses.</span></span><span class="sig-name descname"><span class="pre">response_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">response</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/responses.html#response_text"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.responses.response_text" title="Link to this definition">¶</a></dt>
+<dd><p>Liest Text aus einfacher oder blockbasierter LangChain-Ausgabe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>response</strong> (<em>AIMessage</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.responses.model_metrics">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.responses.</span></span><span class="sig-name descname"><span class="pre">model_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">response</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/responses.html#model_metrics"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.responses.model_metrics" title="Link to this definition">¶</a></dt>
+<dd><p>Normalisiert LangChain-Nutzungsdaten und Provider-Metadaten.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>response</strong> (<em>AIMessage</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#grading_pipeline.models.responses.ModelMetrics" title="grading_pipeline.models.responses.ModelMetrics"><em>ModelMetrics</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.models.metadata">
+<span id="modellmetadaten"></span><h2>Modellmetadaten<a class="headerlink" href="#module-grading_pipeline.models.metadata" title="Link to this heading">¶</a></h2>
+<p>Auswertung der Konfiguration und Laufzeitgrenzen eines Chatmodells.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.metadata.model_identity">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.metadata.</span></span><span class="sig-name descname"><span class="pre">model_identity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_mode</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/metadata.html#model_identity"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.metadata.model_identity" title="Link to this definition">¶</a></dt>
+<dd><p>Liefert die für Cache und Statistik relevante Modellidentität.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>BaseChatModel</em><em> | </em><em>Any</em>)</p></li>
+<li><p><strong>json_mode</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.metadata.model_timeout">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.metadata.</span></span><span class="sig-name descname"><span class="pre">model_timeout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/metadata.html#model_timeout"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.metadata.model_timeout" title="Link to this definition">¶</a></dt>
+<dd><p>Liest das für Statistiken gespeicherte Zeitlimit eines Modells.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model</strong> (<em>BaseChatModel</em><em> | </em><em>Any</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>float | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.metadata.model_label">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.metadata.</span></span><span class="sig-name descname"><span class="pre">model_label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/metadata.html#model_label"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.metadata.model_label" title="Link to this definition">¶</a></dt>
+<dd><p>Gibt angeforderten Modellnamen und optionalen Endpunkt zurück.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model</strong> (<em>BaseChatModel</em><em> | </em><em>Any</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[str, str | None]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.models.json">
+<span id="modellantworten-im-json-format"></span><h2>Modellantworten im JSON-Format<a class="headerlink" href="#module-grading_pipeline.models.json" title="Link to this heading">¶</a></h2>
+<p>Einlesen JSON-basierter Modellantworten.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.json.parse_model_json_object">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.json.</span></span><span class="sig-name descname"><span class="pre">parse_model_json_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/json.html#parse_model_json_object"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.json.parse_model_json_object" title="Link to this definition">¶</a></dt>
+<dd><p>Parst ein Modell-JSON-Objekt und entfernt höchstens vollständige Code-Fences.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>raw</strong> (<em>str</em>)</p></li>
+<li><p><strong>response_label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.models.prompts">
+<span id="promptvorlagen"></span><h2>Promptvorlagen<a class="headerlink" href="#module-grading_pipeline.models.prompts" title="Link to this heading">¶</a></h2>
+<p>Erzeugung validierter Jinja2-Promptvorlagen für LangChain.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.prompts.create_prompt_template">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.prompts.</span></span><span class="sig-name descname"><span class="pre">create_prompt_template</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">template</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">variables</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt_label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/prompts.html#create_prompt_template"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.prompts.create_prompt_template" title="Link to this definition">¶</a></dt>
+<dd><p>Erzeugt eine Jinja2-Vorlage und prüft ihre Projektvariablen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>template</strong> (<em>str</em>)</p></li>
+<li><p><strong>variables</strong> (<em>Iterable</em><em>[</em><em>str</em><em>]</em>)</p></li>
+<li><p><strong>prompt_label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>PromptTemplate</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.models.prompts.render_prompt_template">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.models.prompts.</span></span><span class="sig-name descname"><span class="pre">render_prompt_template</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">template</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt_label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/models/prompts.html#render_prompt_template"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.models.prompts.render_prompt_template" title="Link to this definition">¶</a></dt>
+<dd><p>Rendert eine Projektvorlage einmalig mit LangChains PromptTemplate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>template</strong> (<em>str</em>)</p></li>
+<li><p><strong>values</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>str</em><em>]</em>)</p></li>
+<li><p><strong>prompt_label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API-Referenz</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../public.html">Öffentliche API</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Entwicklerreferenz</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API-Referenz</a><ul>
+  <li><a href="index.html">Entwicklerreferenz</a><ul>
+      <li>Previous: <a href="pipelines.html" title="vorheriges Kapitel">Pipelines</a></li>
+      <li>Next: <a href="validation.html" title="nächstes Kapitel">Validierung</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../../_sources/api/developer/models.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

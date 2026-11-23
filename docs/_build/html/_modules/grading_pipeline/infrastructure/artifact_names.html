@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.infrastructure.artifact_names &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../../genindex.html" />
+    <link rel="search" title="Suche" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.infrastructure.artifact_names</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Zentrale, unveränderliche Dateinamen aller erzeugten Pipeline-Artefakte.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+
+<div class="viewcode-block" id="VisualExtractionArtifactNames">
+<a class="viewcode-back" href="../../../api/developer/artifacts_cache.html#grading_pipeline.infrastructure.artifact_names.VisualExtractionArtifactNames">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">VisualExtractionArtifactNames</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Benennt die Artefakte der visuellen Extraktion.&quot;&quot;&quot;</span>
+
+    <span class="n">pages_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;01_pages&quot;</span>
+    <span class="n">responses_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;02_page_responses&quot;</span>
+    <span class="n">markdown</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;03_vlm_export.raw.md&quot;</span>
+    <span class="n">reviewed_markdown</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;03_vlm_export.reviewed.md&quot;</span>
+    <span class="n">document_json</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;03_vlm_document.raw.json&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="TaskExtractionArtifactNames">
+<a class="viewcode-back" href="../../../api/developer/artifacts_cache.html#grading_pipeline.infrastructure.artifact_names.TaskExtractionArtifactNames">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskExtractionArtifactNames</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Benennt die Artefakte der Aufgabenextraktion.&quot;&quot;&quot;</span>
+
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">input_markdown</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">raw_json</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">reviewed_json</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">response_json</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">cache_json</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">statistics_json</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">tasks_dir</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">export_markdown</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="TaskPartitioningArtifactNames">
+<a class="viewcode-back" href="../../../api/developer/artifacts_cache.html#grading_pipeline.infrastructure.artifact_names.TaskPartitioningArtifactNames">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskPartitioningArtifactNames</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Benennt die Artefakte der Aufgabenpartitionierung.&quot;&quot;&quot;</span>
+
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">input_markdown</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">responses_dir</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">raw_json</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">reviewed_json</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">cache_json</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">tasks_dir</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">export_markdown</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="RubricArtifactNames">
+<a class="viewcode-back" href="../../../api/developer/artifacts_cache.html#grading_pipeline.infrastructure.artifact_names.RubricArtifactNames">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RubricArtifactNames</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Benennt Eingaben, Antworten und Exporte der Rubric-Erzeugung.&quot;&quot;&quot;</span>
+
+    <span class="n">partitioned_document</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;06_task_partitioning.raw.json&quot;</span>
+    <span class="n">structure_check</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;01_structure_check.json&quot;</span>
+    <span class="n">inputs_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;02_rubric_inputs&quot;</span>
+    <span class="n">responses_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;02_rubric_responses&quot;</span>
+    <span class="n">raw_json</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;02_rubrics.raw.json&quot;</span>
+    <span class="n">reviewed_json</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;02_rubrics.reviewed.json&quot;</span>
+    <span class="n">cache_json</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;02_rubrics.cache.json&quot;</span>
+    <span class="n">export_markdown</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;03_rubrics_export.md&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="GradingArtifactNames">
+<a class="viewcode-back" href="../../../api/developer/artifacts_cache.html#grading_pipeline.infrastructure.artifact_names.GradingArtifactNames">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GradingArtifactNames</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Benennt Strukturprüfung, Modellausgaben und Bewertungsberichte.&quot;&quot;&quot;</span>
+
+    <span class="n">structure_check</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;01_structure_check.json&quot;</span>
+    <span class="n">inputs_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;02_grading_inputs&quot;</span>
+    <span class="n">responses_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;02_grading_responses&quot;</span>
+    <span class="n">results_json</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;03_grading_results.raw.json&quot;</span>
+    <span class="n">cache_json</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;03_grading.cache.json&quot;</span>
+    <span class="n">report_markdown</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;04_grading_report.md&quot;</span>
+    <span class="n">feedback_markdown</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;05_student_feedback.md&quot;</span></div>
+
+
+
+<span class="n">VISUAL_EXTRACTION_ARTIFACTS</span> <span class="o">=</span> <span class="n">VisualExtractionArtifactNames</span><span class="p">()</span>
+<span class="n">TASK_EXTRACTION_ARTIFACTS</span> <span class="o">=</span> <span class="n">TaskExtractionArtifactNames</span><span class="p">(</span>
+    <span class="n">source</span><span class="o">=</span><span class="n">VISUAL_EXTRACTION_ARTIFACTS</span><span class="o">.</span><span class="n">markdown</span><span class="p">,</span>
+    <span class="n">input_markdown</span><span class="o">=</span><span class="s2">&quot;04_task_extraction.input.md&quot;</span><span class="p">,</span>
+    <span class="n">raw_json</span><span class="o">=</span><span class="s2">&quot;04_task_extraction.raw.json&quot;</span><span class="p">,</span>
+    <span class="n">reviewed_json</span><span class="o">=</span><span class="s2">&quot;04_task_extraction.reviewed.json&quot;</span><span class="p">,</span>
+    <span class="n">response_json</span><span class="o">=</span><span class="s2">&quot;04_task_extraction.response.json&quot;</span><span class="p">,</span>
+    <span class="n">cache_json</span><span class="o">=</span><span class="s2">&quot;04_task_extraction.cache.json&quot;</span><span class="p">,</span>
+    <span class="n">statistics_json</span><span class="o">=</span><span class="s2">&quot;04_task_extraction.statistics.json&quot;</span><span class="p">,</span>
+    <span class="n">tasks_dir</span><span class="o">=</span><span class="s2">&quot;05_tasks&quot;</span><span class="p">,</span>
+    <span class="n">export_markdown</span><span class="o">=</span><span class="s2">&quot;05_tasks_export.md&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">TASK_PARTITIONING_ARTIFACTS</span> <span class="o">=</span> <span class="n">TaskPartitioningArtifactNames</span><span class="p">(</span>
+    <span class="n">source</span><span class="o">=</span><span class="n">TASK_EXTRACTION_ARTIFACTS</span><span class="o">.</span><span class="n">raw_json</span><span class="p">,</span>
+    <span class="n">input_markdown</span><span class="o">=</span><span class="s2">&quot;06_task_partitioning.input.md&quot;</span><span class="p">,</span>
+    <span class="n">responses_dir</span><span class="o">=</span><span class="s2">&quot;06_task_partitioning_responses&quot;</span><span class="p">,</span>
+    <span class="n">raw_json</span><span class="o">=</span><span class="s2">&quot;06_task_partitioning.raw.json&quot;</span><span class="p">,</span>
+    <span class="n">reviewed_json</span><span class="o">=</span><span class="s2">&quot;06_task_partitioning.reviewed.json&quot;</span><span class="p">,</span>
+    <span class="n">cache_json</span><span class="o">=</span><span class="s2">&quot;06_task_partitioning.cache.json&quot;</span><span class="p">,</span>
+    <span class="n">tasks_dir</span><span class="o">=</span><span class="s2">&quot;07_partitioned_tasks&quot;</span><span class="p">,</span>
+    <span class="n">export_markdown</span><span class="o">=</span><span class="s2">&quot;07_partitioned_tasks_export.md&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">RUBRIC_ARTIFACTS</span> <span class="o">=</span> <span class="n">RubricArtifactNames</span><span class="p">()</span>
+<span class="n">GRADING_ARTIFACTS</span> <span class="o">=</span> <span class="n">GradingArtifactNames</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

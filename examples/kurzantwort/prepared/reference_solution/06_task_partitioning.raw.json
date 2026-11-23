@@ -1,0 +1,32 @@
+{
+  "document_type": "reference_solution",
+  "document_title": "Musterlösung",
+  "tasks": [
+    {
+      "id": "1",
+      "source_label": "Aufgabe 1",
+      "title": "Ausleihe in der Bibliothek",
+      "points": null,
+      "introduction_markdown": null,
+      "closing_markdown": null,
+      "subtasks": [
+        {
+          "id": "a",
+          "source_label": "a)",
+          "title": null,
+          "points": null,
+          "markdown": "Man darf es drei Wochen behalten.",
+          "subtasks": []
+        },
+        {
+          "id": "b",
+          "source_label": "b)",
+          "title": null,
+          "points": null,
+          "markdown": "Man muss das Buch zurückgeben.",
+          "subtasks": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+Du erhaeltst das Bild genau einer Seite einer Aufgabensammlung mit teilweise mathematischem Inhalt.
+
+Transkribiere alle sichtbaren inhaltlichen Elemente in ihrer visuellen Lesereihenfolge als Markdown. Uebernimm Inhalt, Schreibweise und erkennbare Struktur so originalgetreu wie moeglich.
+
+## Allgemeine Regeln
+
+- Gib ausschliesslich Markdown ohne Kommentar und ohne Markdown-Codezaun aus.
+- Bleibe beim sichtbaren Befund: Ergaenze oder korrigiere keine Inhalte, erklaere oder bewerte sie nicht und leite keine nicht dargestellten Aussagen daraus ab.
+- Transkribiere nur den auf der Seite sichtbaren Inhalt. Setze Fortsetzungen anderer Seiten nicht eigenstaendig fort.
+- Transkribiere auch Kopfzeilen, Fusszeilen, Seitenzahlen und gestrichene Inhalte. Stelle erkennbare Streichungen nach Moeglichkeit als `~~gestrichener Inhalt~~` dar.
+- Erhalte Absaetze, Listen, Spalten und die Gruppierung zusammengehoerender Elemente. Nutze Markdown-Strukturen nur, wenn sie erkennbar sind.
+- Typografische Zeilenumbrueche und eindeutige Worttrennungen duerfen zusammengefuehrt werden. Inhaltliche Umbrueche bleiben erhalten.
+- Setze fuer unleserliche Inhalte `[UNLESERLICH]`.
+- Setze fuer eine unsichere, aber plausible Lesart `[UNSICHER. ROHTEXT: "sichtbare unsichere Lesart"]`.
+
+## Mathematik
+
+- Gib mathematische Ausdruecke an ihrer sichtbaren Position als LaTeX aus: `$...$` innerhalb einer Textzeile und `$$...$$` fuer abgesetzte Formeln.
+- Rechne nichts aus.
+- Erhalte bei Matrizen die sichtbare Struktur mit `&` zwischen Eintraegen und `\\` zwischen Zeilen. Waehle "array" als LaTeX-Umgebung.
+
+## Tabellen und Abbildungen
+
+- Gib eindeutig erkennbare Tabellen als Markdown-Tabellen mit mathematischen Zellinhalten in LaTeX aus.
+- Ersetze jede Abbildung, jedes Diagramm und jede Skizze durch `[OBJEKT | BBOX: (x1, y1)-(x2, y2)]`. Beschreibe oder transkribiere den grafischen Inhalt nicht.
+- Transkribiere eine sichtbare Bildueberschrift oder Bildunterschrift anschliessend wie gewoehnlichen Text an ihrer sichtbaren Position.
+- Verwende fuer `BBOX` normierte Seitenkoordinaten von `0` bis `1000 mit dem Ursprung oben links. Die Bounding Box umfasst nur das grafische Objekt, nicht seine Bildbeschriftung.

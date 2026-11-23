@@ -1,0 +1,63 @@
+Du erhaeltst eine vollstaendige Aufgabenstellung und die zugehoerige Musterloesung. Erstelle ausschliesslich fuer den unter `ZIEL` angegebenen Blattknoten eine Bewertungsrubric.
+
+Leite die Kriterien aus der Aufgabenstellung ab. Nutze die Musterloesung nur zur fachlichen Konkretisierung, nicht als verbindliche Gliederung oder einzigen Loesungsweg.
+
+## Regeln
+
+* Bewerte keine studentische Loesung.
+* Jedes Kriterium bewertet genau einen pruefbaren Loesungsbestandteil. Zusammen decken die Kriterien alle Anforderungen ohne Doppelbepunktung ab.
+* Beruecksichtige fachlich und algebraisch aequivalente Loesungen. Verlange keine bestimmten Formulierungen, Variablennamen, Reihenfolgen oder Zwischenschritte, sofern diese nicht notwendig oder ausdruecklich gefordert sind.
+* Gewichte Kriterien nach ihrer fachlichen Bedeutung, nicht nach dem Umfang der Musterloesung.
+* `description` benennt die gepruefte Leistung knapp.
+* `full_credit` beschreibt die vollstaendige Leistung konkret. Allgemeine Angaben wie „korrekt berechnet“, „vollstaendig erklaert“ oder „klar dargestellt“ reichen nicht aus.
+* Kopiere keine ausfuehrlichen Herleitungen aus der Musterloesung.
+* Zerlege `full_credit` vollstaendig und ohne zusaetzliche Anforderungen in additive `credit_items`.
+* Jedes `credit_item` enthaelt exakt `id`, `points` und `requirement`. Verwende innerhalb jedes Kriteriums die IDs `credit_001`, `credit_002` usw.
+* Formuliere jedes Item als atomare und eigenstaendig bepunktbare Teilleistung. Items duerfen sich nicht ueberschneiden, gegenseitig enthalten oder dieselbe Leistung mehrfach bewerten.
+* Die Kriteriumspunktzahl ergibt sich ausschliesslich aus der Summe der erfuellten Items. Verwende keine kumulativen Leistungsstufen oder Formulierungen wie „zusaetzlich zu den vorherigen Leistungen“.
+* Ist ein Kriterium nicht sinnvoll teilbar, verwende genau ein Item mit der vollen Kriteriumspunktzahl. `credit_items` ist niemals leer oder `null`.
+* Verwende keine unbestimmten Anforderungen wie „korrekter Ansatz“, „teilweise korrekt“, „fehlende Details“ oder „im Wesentlichen richtig“.
+* Formuliere Items bei offenen Aufgaben methodenneutral anhand der geforderten Eigenschaften, Ergebnisse und Nachweise.
+* `acceptable_alternatives` nennt konkrete aequivalente Ergebnisse oder Ansaetze; andernfalls setze `null`.
+* Ist `max_points` eine Zahl, muss die Summe aller Kriterienpunkte ihr entsprechen. Innerhalb jedes Kriteriums muss die Summe der Itempunkte dessen `points` entsprechen.
+* Ist `max_points` `null`, erhaelt jedes Kriterium genau einen Punkt und genau ein Item mit einem Punkt.
+* Verwende nur positive Punktzahlen und keine Bonuspunkte.
+* Maskiere Backslashes in JSON-Strings korrekt.
+* Gib ausschliesslich ein einzelnes gueltiges JSON-Objekt aus.
+
+## Ausgabeformat
+
+{
+"target_path": "tasks[0].subtasks[0]",
+"max_points": 2,
+"criteria": [
+{
+"id": "criterion_001",
+"description": "Pruefbarer Loesungsbestandteil",
+"points": 2,
+"full_credit": "Konkrete Voraussetzungen fuer die volle Punktzahl",
+"credit_items": [
+{
+"id": "credit_001",
+"points": 1,
+"requirement": "Konkrete, eigenstaendig pruefbare Teilleistung"
+},
+{
+"id": "credit_002",
+"points": 1,
+"requirement": "Weitere nicht ueberlappende Teilleistung"
+}
+],
+"acceptable_alternatives": null
+}
+]
+}
+
+ZIEL:
+{{ target }}
+
+VOLLSTAENDIGE AUFGABENSTELLUNG:
+{{ assignment }}
+
+VOLLSTAENDIGE MUSTERLOESUNG:
+{{ reference_solution }}

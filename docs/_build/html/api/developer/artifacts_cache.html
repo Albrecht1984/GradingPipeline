@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Artefakte und Cache &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../genindex.html" />
+    <link rel="search" title="Suche" href="../../search.html" />
+    <link rel="next" title="Bewertungshilfsmodule" href="grading_support.html" />
+    <link rel="prev" title="Datenmodelle und Strukturen" href="schemas.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="artefakte-und-cache">
+<h1>Artefakte und Cache<a class="headerlink" href="#artefakte-und-cache" title="Link to this heading">¶</a></h1>
+<section id="module-grading_pipeline.infrastructure.artifact_names">
+<span id="artefaktnamen"></span><h2>Artefaktnamen<a class="headerlink" href="#module-grading_pipeline.infrastructure.artifact_names" title="Link to this heading">¶</a></h2>
+<p>Zentrale, unveränderliche Dateinamen aller erzeugten Pipeline-Artefakte.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.artifact_names.VisualExtractionArtifactNames">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.artifact_names.</span></span><span class="sig-name descname"><span class="pre">VisualExtractionArtifactNames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pages_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'01_pages'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'02_page_responses'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">markdown</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'03_vlm_export.raw.md'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reviewed_markdown</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'03_vlm_export.reviewed.md'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">document_json</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'03_vlm_document.raw.json'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/artifact_names.html#VisualExtractionArtifactNames"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.artifact_names.VisualExtractionArtifactNames" title="Link to this definition">¶</a></dt>
+<dd><p>Benennt die Artefakte der visuellen Extraktion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pages_dir</strong> (<em>str</em>)</p></li>
+<li><p><strong>responses_dir</strong> (<em>str</em>)</p></li>
+<li><p><strong>markdown</strong> (<em>str</em>)</p></li>
+<li><p><strong>reviewed_markdown</strong> (<em>str</em>)</p></li>
+<li><p><strong>document_json</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.artifact_names.TaskExtractionArtifactNames">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.artifact_names.</span></span><span class="sig-name descname"><span class="pre">TaskExtractionArtifactNames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_markdown</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reviewed_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">statistics_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tasks_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_markdown</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/artifact_names.html#TaskExtractionArtifactNames"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.artifact_names.TaskExtractionArtifactNames" title="Link to this definition">¶</a></dt>
+<dd><p>Benennt die Artefakte der Aufgabenextraktion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source</strong> (<em>str</em>)</p></li>
+<li><p><strong>input_markdown</strong> (<em>str</em>)</p></li>
+<li><p><strong>raw_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>reviewed_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>response_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>cache_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>statistics_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>tasks_dir</strong> (<em>str</em>)</p></li>
+<li><p><strong>export_markdown</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.artifact_names.TaskPartitioningArtifactNames">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.artifact_names.</span></span><span class="sig-name descname"><span class="pre">TaskPartitioningArtifactNames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_markdown</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reviewed_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_json</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tasks_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_markdown</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/artifact_names.html#TaskPartitioningArtifactNames"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.artifact_names.TaskPartitioningArtifactNames" title="Link to this definition">¶</a></dt>
+<dd><p>Benennt die Artefakte der Aufgabenpartitionierung.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source</strong> (<em>str</em>)</p></li>
+<li><p><strong>input_markdown</strong> (<em>str</em>)</p></li>
+<li><p><strong>responses_dir</strong> (<em>str</em>)</p></li>
+<li><p><strong>raw_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>reviewed_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>cache_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>tasks_dir</strong> (<em>str</em>)</p></li>
+<li><p><strong>export_markdown</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.artifact_names.RubricArtifactNames">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.artifact_names.</span></span><span class="sig-name descname"><span class="pre">RubricArtifactNames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">partitioned_document</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'06_task_partitioning.raw.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">structure_check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'01_structure_check.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'02_rubric_inputs'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'02_rubric_responses'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_json</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'02_rubrics.raw.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reviewed_json</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'02_rubrics.reviewed.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_json</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'02_rubrics.cache.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_markdown</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'03_rubrics_export.md'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/artifact_names.html#RubricArtifactNames"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.artifact_names.RubricArtifactNames" title="Link to this definition">¶</a></dt>
+<dd><p>Benennt Eingaben, Antworten und Exporte der Rubric-Erzeugung.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>partitioned_document</strong> (<em>str</em>)</p></li>
+<li><p><strong>structure_check</strong> (<em>str</em>)</p></li>
+<li><p><strong>inputs_dir</strong> (<em>str</em>)</p></li>
+<li><p><strong>responses_dir</strong> (<em>str</em>)</p></li>
+<li><p><strong>raw_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>reviewed_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>cache_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>export_markdown</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.artifact_names.GradingArtifactNames">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.artifact_names.</span></span><span class="sig-name descname"><span class="pre">GradingArtifactNames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">structure_check</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'01_structure_check.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'02_grading_inputs'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responses_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'02_grading_responses'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_json</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'03_grading_results.raw.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_json</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'03_grading.cache.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">report_markdown</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'04_grading_report.md'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feedback_markdown</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'05_student_feedback.md'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/artifact_names.html#GradingArtifactNames"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.artifact_names.GradingArtifactNames" title="Link to this definition">¶</a></dt>
+<dd><p>Benennt Strukturprüfung, Modellausgaben und Bewertungsberichte.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>structure_check</strong> (<em>str</em>)</p></li>
+<li><p><strong>inputs_dir</strong> (<em>str</em>)</p></li>
+<li><p><strong>responses_dir</strong> (<em>str</em>)</p></li>
+<li><p><strong>results_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>cache_json</strong> (<em>str</em>)</p></li>
+<li><p><strong>report_markdown</strong> (<em>str</em>)</p></li>
+<li><p><strong>feedback_markdown</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.infrastructure.pipeline_artifacts">
+<span id="gemeinsame-pipelineartefakte"></span><h2>Gemeinsame Pipelineartefakte<a class="headerlink" href="#module-grading_pipeline.infrastructure.pipeline_artifacts" title="Link to this heading">¶</a></h2>
+<p>Gemeinsame Hilfstypen und Dateifunktionen für Pipeline-Artefakte.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.pipeline_artifacts.ContextMaterial">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.pipeline_artifacts.</span></span><span class="sig-name descname"><span class="pre">ContextMaterial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/pipeline_artifacts.html#ContextMaterial"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.pipeline_artifacts.ContextMaterial" title="Link to this definition">¶</a></dt>
+<dd><p>Repräsentiert eine geladene Kontextdatei samt Herkunft und Inhalt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>content</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.pipeline_artifacts.ModelCallArtifacts">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.pipeline_artifacts.</span></span><span class="sig-name descname"><span class="pre">ModelCallArtifacts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">statistics</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/pipeline_artifacts.html#ModelCallArtifacts"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.pipeline_artifacts.ModelCallArtifacts" title="Link to this definition">¶</a></dt>
+<dd><p>Bündelt die vier Artefakte eines zielweisen Modellaufrufs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input</strong> (<em>Path</em>)</p></li>
+<li><p><strong>raw</strong> (<em>Path</em>)</p></li>
+<li><p><strong>response</strong> (<em>Path</em>)</p></li>
+<li><p><strong>statistics</strong> (<em>Path</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.pipeline_artifacts.preferred_reviewed_artifact">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.pipeline_artifacts.</span></span><span class="sig-name descname"><span class="pre">preferred_reviewed_artifact</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reviewed_filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/pipeline_artifacts.html#preferred_reviewed_artifact"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.pipeline_artifacts.preferred_reviewed_artifact" title="Link to this definition">¶</a></dt>
+<dd><p>Bevorzugt ein vorhandenes Reviewed-Artefakt, sonst das Raw-Artefakt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>directory</strong> (<em>Path</em>)</p></li>
+<li><p><strong>raw_filename</strong> (<em>str</em>)</p></li>
+<li><p><strong>reviewed_filename</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Path</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.pipeline_artifacts.read_context_material">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.pipeline_artifacts.</span></span><span class="sig-name descname"><span class="pre">read_context_material</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">paths</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/pipeline_artifacts.html#read_context_material"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.pipeline_artifacts.read_context_material" title="Link to this definition">¶</a></dt>
+<dd><p>Lädt nicht leere Kontextdateien und versieht sie mit einem Inhalts-Hash.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>paths</strong> (<em>list</em><em>[</em><em>Path</em><em>]</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[<a class="reference internal" href="#grading_pipeline.infrastructure.pipeline_artifacts.ContextMaterial" title="grading_pipeline.infrastructure.pipeline_artifacts.ContextMaterial"><em>ContextMaterial</em></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.pipeline_artifacts.filename_stem">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.pipeline_artifacts.</span></span><span class="sig-name descname"><span class="pre">filename_stem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_label</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/pipeline_artifacts.html#filename_stem"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.pipeline_artifacts.filename_stem" title="Link to this definition">¶</a></dt>
+<dd><p>Erzeugt einen sortierbaren, dateisystemtauglichen Artefaktnamen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>)</p></li>
+<li><p><strong>display_label</strong> (<em>str</em>)</p></li>
+<li><p><strong>fallback</strong> (<em>str</em>)</p></li>
+<li><p><strong>index_width</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.pipeline_artifacts.model_call_artifacts">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.pipeline_artifacts.</span></span><span class="sig-name descname"><span class="pre">model_call_artifacts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stem</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/pipeline_artifacts.html#model_call_artifacts"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.pipeline_artifacts.model_call_artifacts" title="Link to this definition">¶</a></dt>
+<dd><p>Leitet die Artefaktpfade eines zielweisen Modellaufrufs ab.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>response_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>stem</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#grading_pipeline.infrastructure.pipeline_artifacts.ModelCallArtifacts" title="grading_pipeline.infrastructure.pipeline_artifacts.ModelCallArtifacts"><em>ModelCallArtifacts</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.pipeline_artifacts.prepare_model_output">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.pipeline_artifacts.</span></span><span class="sig-name descname"><span class="pre">prepare_model_output</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">working_dirs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_cache</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/pipeline_artifacts.html#prepare_model_output"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.pipeline_artifacts.prepare_model_output" title="Link to this definition">¶</a></dt>
+<dd><p>Bereitet die gemeinsamen Ausgabeziele einer zielweisen Modellstufe vor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> (<em>Path</em>)</p></li>
+<li><p><strong>working_dirs</strong> (<em>tuple</em><em>[</em><em>Path</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>result_files</strong> (<em>tuple</em><em>[</em><em>Path</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>cache_file</strong> (<em>Path</em>)</p></li>
+<li><p><strong>preserve_cache</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.extraction.artifacts">
+<span id="aufgabenartefakte"></span><h2>Aufgabenartefakte<a class="headerlink" href="#module-grading_pipeline.extraction.artifacts" title="Link to this heading">¶</a></h2>
+<p>Stellt gemeinsame Benennungs- und Markdown-Helfer für Aufgabenartefakte bereit.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.artifacts.render_heading">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.artifacts.</span></span><span class="sig-name descname"><span class="pre">render_heading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/extraction/artifacts.html#render_heading"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.artifacts.render_heading" title="Link to this definition">¶</a></dt>
+<dd><p>Rendert eine Markdown-Überschrift aus ID, Titel und optionalen Punkten.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task_id</strong> (<em>str</em>)</p></li>
+<li><p><strong>title</strong> (<em>Any</em>)</p></li>
+<li><p><strong>points</strong> (<em>Any</em>)</p></li>
+<li><p><strong>level</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.artifacts.task_filename">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.artifacts.</span></span><span class="sig-name descname"><span class="pre">task_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/extraction/artifacts.html#task_filename"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.artifacts.task_filename" title="Link to this definition">¶</a></dt>
+<dd><p>Erzeugt einen sortierbaren und dateisystemtauglichen Aufgabendateinamen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>)</p></li>
+<li><p><strong>task_id</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.artifacts.write_task_markdown_artifacts">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.artifacts.</span></span><span class="sig-name descname"><span class="pre">write_task_markdown_artifacts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tasks</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">tasks_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">render</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/extraction/artifacts.html#write_task_markdown_artifacts"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.artifacts.write_task_markdown_artifacts" title="Link to this definition">¶</a></dt>
+<dd><p>Schreibt einzelne Aufgaben-Markdowns und den gemeinsamen Export.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tasks</strong> (<em>list</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>tasks_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>export_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>render</strong> (<em>Callable</em><em>[</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em><em>, </em><em>str</em><em>]</em>)</p></li>
+<li><p><strong>progress</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.caching.common">
+<span id="gemeinsame-cachefunktionen"></span><h2>Gemeinsame Cachefunktionen<a class="headerlink" href="#module-grading_pipeline.caching.common" title="Link to this heading">¶</a></h2>
+<p>Provider- und pipelineunabhaengige Cache-Grundfunktionen.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.caching.common.cache_document_matches">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.caching.common.</span></span><span class="sig-name descname"><span class="pre">cache_document_matches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/caching/common.html#cache_document_matches"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.caching.common.cache_document_matches" title="Link to this definition">¶</a></dt>
+<dd><p>Prüft, ob alle erwarteten Cache-Metadaten vorliegen und übereinstimmen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cache</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>metadata</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.caching.common.read_matching_cache">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.caching.common.</span></span><span class="sig-name descname"><span class="pre">read_matching_cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/caching/common.html#read_matching_cache"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.caching.common.read_matching_cache" title="Link to this definition">¶</a></dt>
+<dd><p>Liest ein Cache-Dokument mit passenden Metadaten.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>metadata</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>] | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.caching.common.write_cache_document">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.caching.common.</span></span><span class="sig-name descname"><span class="pre">write_cache_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/caching/common.html#write_cache_document"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.caching.common.write_cache_document" title="Link to this definition">¶</a></dt>
+<dd><p>Schreibt die Metadaten eines Cache-Dokuments atomar.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>metadata</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.caching.common.load_cached_raw_result">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.caching.common.</span></span><span class="sig-name descname"><span class="pre">load_cached_raw_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_available</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expected_input</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validator</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/caching/common.html#load_cached_raw_result"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.caching.common.load_cached_raw_result" title="Link to this definition">¶</a></dt>
+<dd><p>Lädt ein editierbares Raw-Ergebnis bei unverändertem Modellinput.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cache_available</strong> (<em>bool</em>)</p></li>
+<li><p><strong>input_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>expected_input</strong> (<em>str</em>)</p></li>
+<li><p><strong>raw_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>label</strong> (<em>str</em>)</p></li>
+<li><p><strong>validator</strong> (<em>Callable</em><em>[</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em><em>, </em><em>T</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>T</em> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.caching.visual_extraction">
+<span id="cache-der-visuellen-extraktion"></span><h2>Cache der visuellen Extraktion<a class="headerlink" href="#module-grading_pipeline.caching.visual_extraction" title="Link to this heading">¶</a></h2>
+<p>Cache-Verwaltung fuer einzelne Seiten der visuellen Extraktion.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.caching.visual_extraction.visual_extraction_page_cache_identity">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.caching.visual_extraction.</span></span><span class="sig-name descname"><span class="pre">visual_extraction_page_cache_identity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_identity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">render_dpi</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/caching/visual_extraction.html#visual_extraction_page_cache_identity"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.caching.visual_extraction.visual_extraction_page_cache_identity" title="Link to this definition">¶</a></dt>
+<dd><p>Erzeugt die Cache-Identitaet einer gerenderten und extrahierten Seite.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>prompt</strong> (<em>str</em>)</p></li>
+<li><p><strong>model_identity</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>render_dpi</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.caching.visual_extraction.load_visual_extraction_page_cache">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.caching.visual_extraction.</span></span><span class="sig-name descname"><span class="pre">load_visual_extraction_page_cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_markdown_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expected_identity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/caching/visual_extraction.html#load_visual_extraction_page_cache"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.caching.visual_extraction.load_visual_extraction_page_cache" title="Link to this definition">¶</a></dt>
+<dd><p>Lädt den aktuellen Seitentext, wenn seine unveränderte Eingabe zum Cache passt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>metadata_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>raw_markdown_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>expected_identity</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.caching.task_partitioning">
+<span id="cache-der-aufgabenpartitionierung"></span><h2>Cache der Aufgabenpartitionierung<a class="headerlink" href="#module-grading_pipeline.caching.task_partitioning" title="Link to this heading">¶</a></h2>
+<p>Cache-Verwaltung fuer einzeln partitionierte Hauptaufgaben.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.caching.task_partitioning.partition_cache_records">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.caching.task_partitioning.</span></span><span class="sig-name descname"><span class="pre">partition_cache_records</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">identity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/caching/task_partitioning.html#partition_cache_records"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.caching.task_partitioning.partition_cache_records" title="Link to this definition">¶</a></dt>
+<dd><p>Prueft den Partitionierungscache und indiziert seine Hauptaufgaben.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cache</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>identity</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[tuple[int, str], dict[str, <em>Any</em>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.caching.task_partitioning.load_partitioned_task">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.caching.task_partitioning.</span></span><span class="sig-name descname"><span class="pre">load_partitioned_task</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">record</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw_json_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validator</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/caching/task_partitioning.html#load_partitioned_task"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.caching.task_partitioning.load_partitioned_task" title="Link to this definition">¶</a></dt>
+<dd><p>Laedt genau eine weiterhin gueltige partitionierte Hauptaufgabe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>record</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>raw_json_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>validator</strong> (<em>Callable</em><em>[</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em><em>, </em><em>None</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>] | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API-Referenz</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../public.html">Öffentliche API</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Entwicklerreferenz</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API-Referenz</a><ul>
+  <li><a href="index.html">Entwicklerreferenz</a><ul>
+      <li>Previous: <a href="schemas.html" title="vorheriges Kapitel">Datenmodelle und Strukturen</a></li>
+      <li>Next: <a href="grading_support.html" title="nächstes Kapitel">Bewertungshilfsmodule</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../../_sources/api/developer/artifacts_cache.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

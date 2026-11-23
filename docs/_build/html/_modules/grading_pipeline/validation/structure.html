@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.validation.structure &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../../genindex.html" />
+    <link rel="search" title="Suche" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.validation.structure</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Erkennt nicht blockierende Qualitätsprobleme in Aufgabenstrukturen.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.task_nodes</span><span class="w"> </span><span class="kn">import</span> <span class="n">node_text</span><span class="p">,</span> <span class="n">structural_path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.numbers</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_finite_number</span>
+
+
+<span class="n">TECHNICAL_TASK_ID</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^task_\d+$&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">TECHNICAL_SUBTASK_ID</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^subtask_\d+$&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+<span class="n">VISIBLE_SUBTASK_PREFIX</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">r</span><span class="s2">&quot;^\s*(?:#{1,6}\s*)?(?:\([A-Za-z0-9ivxIVX]+\)|&quot;</span>
+    <span class="sa">r</span><span class="s2">&quot;[A-Za-z0-9ivxIVX]+[.)])(?:\s|$)&quot;</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="warn_ids">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.structure.warn_ids">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">warn_ids</span><span class="p">(</span>
+    <span class="n">document</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Meldet technische IDs und wiederholte Kennzeichnungen direkt über warn.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">visit</span><span class="p">(</span><span class="n">nodes</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">parent_path</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Durchläuft Aufgaben rekursiv und gibt jeden erkannten Hinweis sofort aus.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">node</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nodes</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="o">*</span><span class="n">parent_path</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+            <span class="n">_warn_node_id</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">document_type</span><span class="o">=</span><span class="n">document_type</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span>
+            <span class="n">visit</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;subtasks&quot;</span><span class="p">),</span> <span class="n">path</span><span class="p">)</span>
+
+    <span class="n">visit</span><span class="p">(</span><span class="n">document</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">),</span> <span class="p">())</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_warn_node_id</span><span class="p">(</span>
+    <span class="n">node</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft die Kennzeichnungen eines Knotens, ohne Texte oder Metadaten zu ändern.&quot;&quot;&quot;</span>
+    <span class="n">path_string</span> <span class="o">=</span> <span class="n">structural_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">node_id</span> <span class="o">=</span> <span class="n">node_text</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">source_label</span> <span class="o">=</span> <span class="n">node_text</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="s2">&quot;source_label&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="n">prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">document_type</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">path_string</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">TECHNICAL_TASK_ID</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">source_label</span><span class="p">):</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2"> verwendet die technische ID </span><span class="si">{</span><span class="n">node_id</span><span class="si">!r}</span><span class="s2">, obwohl die sichtbare &quot;</span>
+             <span class="sa">f</span><span class="s2">&quot;Kennzeichnung </span><span class="si">{</span><span class="n">source_label</span><span class="si">!r}</span><span class="s2"> vorliegt.&quot;</span><span class="p">)</span>
+    <span class="n">markdown</span> <span class="o">=</span> <span class="n">node_text</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="s2">&quot;markdown&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">markdown</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">repeated_label</span> <span class="o">=</span> <span class="n">repeated_subtask_label</span><span class="p">(</span><span class="n">markdown</span><span class="p">,</span> <span class="n">node_id</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">repeated_label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2"> wiederholt die bereits in id gespeicherte Bezeichnung &quot;</span>
+             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node_id</span><span class="si">!r}</span><span class="s2"> am Anfang des Markdown-Inhalts.&quot;</span><span class="p">)</span>
+    <span class="n">repeated_points</span> <span class="o">=</span> <span class="n">repeated_subtask_points</span><span class="p">(</span><span class="n">markdown</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;points&quot;</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">repeated_points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2"> wiederholt die bereits in points gespeicherte Punktzahl &quot;</span>
+             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;points&#39;</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> am Ende des Markdown-Inhalts als </span><span class="si">{</span><span class="n">repeated_points</span><span class="si">!r}</span><span class="s2">.&quot;</span><span class="p">)</span>
+    <span class="n">visible_prefix</span> <span class="o">=</span> <span class="n">VISIBLE_SUBTASK_PREFIX</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">markdown</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">TECHNICAL_SUBTASK_ID</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span> <span class="ow">and</span> <span class="n">visible_prefix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">repeated_label</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2"> verwendet die technische ID </span><span class="si">{</span><span class="n">node_id</span><span class="si">!r}</span><span class="s2">, obwohl der Inhalt &quot;</span>
+             <span class="sa">f</span><span class="s2">&quot;mit der sichtbaren Kennzeichnung </span><span class="si">{</span><span class="n">visible_prefix</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="si">!r}</span><span class="s2"> beginnt.&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="repeated_subtask_label">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.structure.repeated_subtask_label">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">repeated_subtask_label</span><span class="p">(</span><span class="n">markdown</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">subtask_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erkennt eine bereits in ``id`` gespeicherte Kennzeichnung am Textanfang.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">subtask_id</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">escaped_id</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">subtask_id</span><span class="p">)</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+        <span class="sa">rf</span><span class="s2">&quot;^\s*(?:#</span><span class="se">{{</span><span class="s2">1,6</span><span class="se">}}</span><span class="s2">\s*)?(?:\*\*|__)?&quot;</span>
+        <span class="sa">rf</span><span class="s2">&quot;(?:\(\s*</span><span class="si">{</span><span class="n">escaped_id</span><span class="si">}</span><span class="s2">\s*\)|</span><span class="si">{</span><span class="n">escaped_id</span><span class="si">}</span><span class="s2">\s*[.)])&quot;</span>
+        <span class="sa">rf</span><span class="s2">&quot;(?:\*\*|__)?(?:\s|&amp;emsp;)*&quot;</span><span class="p">,</span>
+        <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">markdown</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="repeated_subtask_points">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.structure.repeated_subtask_points">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">repeated_subtask_points</span><span class="p">(</span><span class="n">markdown</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erkennt eine bereits strukturierte Punktzahl am Ende des Markdown-Texts.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_finite_number</span><span class="p">(</span><span class="n">points</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">numeric</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">points</span><span class="p">)</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">variants</span> <span class="o">=</span> <span class="p">{</span><span class="n">numeric</span><span class="p">,</span> <span class="n">numeric</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="s2">&quot;,&quot;</span><span class="p">)}</span>
+    <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">points</span><span class="p">)</span><span class="o">.</span><span class="n">is_integer</span><span class="p">():</span>
+        <span class="n">integer</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">points</span><span class="p">))</span>
+        <span class="n">variants</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">integer</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">integer</span><span class="si">}</span><span class="s2">.0&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">integer</span><span class="si">}</span><span class="s2">,0&quot;</span><span class="p">})</span>
+    <span class="n">number_pattern</span> <span class="o">=</span> <span class="s2">&quot;|&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">variants</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="nb">len</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+        <span class="sa">rf</span><span class="s2">&quot;(?:\*\*|__)?(?:</span><span class="si">{</span><span class="n">number_pattern</span><span class="si">}</span><span class="s2">)\s*Punkt(?:e)?&quot;</span>
+        <span class="sa">rf</span><span class="s2">&quot;(?:\*\*|__)?[.\s]*$&quot;</span><span class="p">,</span>
+        <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">markdown</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

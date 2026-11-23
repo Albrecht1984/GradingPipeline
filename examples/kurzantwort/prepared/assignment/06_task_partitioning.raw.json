@@ -1,0 +1,32 @@
+{
+  "document_type": "assignment",
+  "document_title": "Aufgabenstellung",
+  "tasks": [
+    {
+      "id": "1",
+      "source_label": "Aufgabe 1",
+      "title": "Ausleihe in der Bibliothek",
+      "points": 2,
+      "introduction_markdown": "Eine Bibliothek verleiht Bücher für drei Wochen.",
+      "closing_markdown": null,
+      "subtasks": [
+        {
+          "id": "a",
+          "source_label": "a)",
+          "title": null,
+          "points": 1,
+          "markdown": "Wie lange darf man ein Buch behalten?",
+          "subtasks": []
+        },
+        {
+          "id": "b",
+          "source_label": "b)",
+          "title": null,
+          "points": 1,
+          "markdown": "Was muss man am Ende der Leihfrist tun?",
+          "subtasks": []
+        }
+      ]
+    }
+  ]
+}

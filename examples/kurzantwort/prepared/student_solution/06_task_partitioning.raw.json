@@ -1,0 +1,32 @@
+{
+  "document_type": "student_solution",
+  "document_title": "Studentische Lösung",
+  "tasks": [
+    {
+      "id": "1",
+      "source_label": "Aufgabe 1",
+      "title": "Ausleihe in der Bibliothek",
+      "points": null,
+      "introduction_markdown": null,
+      "closing_markdown": null,
+      "subtasks": [
+        {
+          "id": "a",
+          "source_label": "a)",
+          "title": null,
+          "points": null,
+          "markdown": "Drei Wochen.",
+          "subtasks": []
+        },
+        {
+          "id": "b",
+          "source_label": "b)",
+          "title": null,
+          "points": null,
+          "markdown": "Man kann das Buch einfach behalten.",
+          "subtasks": []
+        }
+      ]
+    }
+  ]
+}

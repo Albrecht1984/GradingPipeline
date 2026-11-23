@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.validation.tasks &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../../genindex.html" />
+    <link rel="search" title="Suche" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.validation.tasks</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Prüft extrahierte und partitionierte Aufgabenstrukturen, ohne sie zu verändern.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterator</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.task_nodes</span><span class="w"> </span><span class="kn">import</span> <span class="n">child_nodes</span><span class="p">,</span> <span class="n">node_text</span><span class="p">,</span> <span class="n">text_or_empty</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.numbers</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_optional_positive_points</span>
+
+
+<span class="n">DOCUMENT_TYPES</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;assignment&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;reference_solution&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;student_solution&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">NULL_LIKE_OPTIONAL_TEXT</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;null&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="s2">&quot;n/a&quot;</span><span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_null_literals</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Liefert Feldpfad und Text für Platzhalter wie ``null``, ``NONE`` oder ``n/a``.</span>
+
+<span class="sd">    Beispiel: ``{&quot;document_title&quot;: &quot;null&quot;, &quot;tasks&quot;: [{&quot;title&quot;: &quot; n/a &quot;}]}``</span>
+<span class="sd">    liefert ``(&quot;document_title&quot;, &quot;null&quot;)`` und ``(&quot;tasks[0].title&quot;, &quot; n/a &quot;)``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">visit</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fields</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prüft optionale Texte und durchläuft vorhandene Aufgaben rekursiv.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">NULL_LIKE_OPTIONAL_TEXT</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}{</span><span class="n">field</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">value</span>
+        <span class="n">child_field</span> <span class="o">=</span> <span class="s2">&quot;tasks&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span> <span class="k">else</span> <span class="s2">&quot;subtasks&quot;</span>
+        <span class="n">children</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">child_field</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">children</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">children</span><span class="p">):</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="k">yield from</span> <span class="n">visit</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}{</span><span class="n">child_field</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">].&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;source_label&quot;</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">))</span>
+
+    <span class="k">yield from</span> <span class="n">visit</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="p">(</span><span class="s2">&quot;document_title&quot;</span><span class="p">,))</span>
+
+
+<div class="viewcode-block" id="warn_extraction_content">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.tasks.warn_extraction_content">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">warn_extraction_content</span><span class="p">(</span><span class="n">document</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Gibt Inhaltswarnungen direkt aus; sammelt nichts und verändert keine Werte.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.structure</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn_ids</span>
+
+    <span class="k">for</span> <span class="n">location</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">_null_literals</span><span class="p">(</span><span class="n">document</span><span class="p">):</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> enthaelt </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2"> statt JSON-null.&quot;</span><span class="p">)</span>
+    <span class="n">warn_ids</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">document</span><span class="p">[</span><span class="s2">&quot;document_type&quot;</span><span class="p">],</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="validate_tasks">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.tasks.validate_tasks">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_tasks</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">expected_document_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft das Datenformat der extrahierten Hauptaufgaben vor der Partitionierung.</span>
+
+<span class="sd">    Jeder Eintrag in ``data[&quot;tasks&quot;]`` steht für eine Hauptaufgabe, etwa</span>
+<span class="sd">    „Aufgabe 1“. Je nach Dokumenttyp enthält sein ``markdown`` die Aufgabenstellung,</span>
+<span class="sd">    die zugehörige Musterlösung oder die studentische Bearbeitung einschließlich</span>
+<span class="sd">    aller Teilaufgaben beziehungsweise Teillösungen. Eine Hauptaufgabe kann mehrere</span>
+<span class="sd">    Seiten umfassen. Erst die spätere Partitionierung gliedert ihren Inhalt in</span>
+<span class="sd">    ``subtasks``.</span>
+
+<span class="sd">    Geprüft werden der Dokumenttyp, die Texttypen der optionalen Titel und</span>
+<span class="sd">    Bezeichnungen sowie eine nichtleere Aufgabenliste aus JSON-Objekten.</span>
+<span class="sd">    Unbrauchbare IDs und optionale Metadaten sowie leerer oder fehlender Text und</span>
+<span class="sd">    fehlende oder unbrauchbare Punktwerte werden nur gemeldet. Markdown muss Text</span>
+<span class="sd">    oder null sein. Bei Musterlösungen und studentischen Bearbeitungen werden auch</span>
+<span class="sd">    verwendbare Zahlenwerte gemeldet, weil dort ``null`` erwartet wird.</span>
+<span class="sd">    Die Prüfung stellt keine inhaltliche Richtigkeit oder Vollständigkeit fest</span>
+<span class="sd">    und verändert die übergebenen Daten nicht.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data: Bereits geparstes Dokumentobjekt mit ``document_type`` und ``tasks``.</span>
+<span class="sd">        expected_document_type: Optional vorgegebener Dokumenttyp. Wenn gesetzt,</span>
+<span class="sd">            muss er mit dem Typ im Dokument übereinstimmen.</span>
+<span class="sd">        warn: Empfänger direkter Konsolenwarnungen; ohne Empfänger keine Ausgabe.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Beim ersten ungültigen Dokumenttyp oder Aufgabenformat.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_validate_main_tasks</span><span class="p">(</span>
+        <span class="n">data</span><span class="p">,</span>
+        <span class="n">expected_document_type</span><span class="o">=</span><span class="n">expected_document_type</span><span class="p">,</span>
+        <span class="n">partitioned</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_partitioned_tasks">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.tasks.validate_partitioned_tasks">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_partitioned_tasks</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">expected_document_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft Hauptaufgaben nach ihrer Gliederung in Unteraufgaben (Partitionierung).</span>
+
+<span class="sd">    Fehlende Inhalte werden direkt gemeldet, ohne die Prüfung abzubrechen.</span>
+<span class="sd">    Geprüft werden Dokumenttyp, Aufgabenliste, Metadaten und Punktwerte</span>
+<span class="sd">    sowie rekursiv die Unteraufgaben und deren Inhalt. Punktwerte sind nur bei</span>
+<span class="sd">    Aufgabenstellungen (assignment) vorgesehen; Zahlenwerte in Lösungen erzeugen Warnungen.</span>
+<span class="sd">    Die Prüfung bestätigt keine inhaltliche Richtigkeit oder Vollständigkeit.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data: Bereits geparstes Dokumentobjekt mit ``document_type`` und ``tasks``.</span>
+<span class="sd">        expected_document_type: Optional vorgegebener Dokumenttyp, mit dem der</span>
+<span class="sd">            Typ im Dokument übereinstimmen muss.</span>
+<span class="sd">        warn: Empfänger direkter Warnungen, auch aus rekursiven Unteraufgabenprüfungen.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Beim ersten ungültigen Dokumenttyp oder Aufgabenformat.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_validate_main_tasks</span><span class="p">(</span>
+        <span class="n">data</span><span class="p">,</span>
+        <span class="n">expected_document_type</span><span class="o">=</span><span class="n">expected_document_type</span><span class="p">,</span>
+        <span class="n">partitioned</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_main_tasks</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">expected_document_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">partitioned</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft technische Dokument- und Baumstruktur; Qualität nur bei ``warn``.&quot;&quot;&quot;</span>
+    <span class="n">document_type</span> <span class="o">=</span> <span class="n">validate_document_type</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">expected_document_type</span><span class="p">)</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tasks</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">tasks</span><span class="p">:</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;partitionierten Hauptaufgaben&quot;</span> <span class="k">if</span> <span class="n">partitioned</span> <span class="k">else</span> <span class="s2">&quot;Hauptaufgaben&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Die LLM-Antwort enthaelt keine </span><span class="si">{</span><span class="n">description</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tasks</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">location</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Hauptaufgabe </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> ist kein JSON-Objekt.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">partitioned</span><span class="p">:</span>
+            <span class="n">_validate_partitioned_task_structure</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">location</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">warn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warn_task_quality</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">partitioned</span><span class="o">=</span><span class="n">partitioned</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_partitioned_task_structure</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fordert rekursiv nur Objektknoten und verwendbare Kinderlisten.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">subtask</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">child_nodes</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">location</span><span class="p">),</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">child_location</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">, Unteraufgabe </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">child_location</span><span class="si">}</span><span class="s2"> ist kein JSON-Objekt.&quot;</span><span class="p">)</span>
+        <span class="n">_validate_partitioned_task_structure</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="n">child_location</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="warn_task_quality">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.tasks.warn_task_quality">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">warn_task_quality</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">partitioned</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Meldet Text-, Metadaten- und Punktprobleme eines technisch lesbaren Dokuments.&quot;&quot;&quot;</span>
+    <span class="n">document_type</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;document_type&quot;</span><span class="p">]</span>
+    <span class="n">_optional_text</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;document_title&quot;</span><span class="p">),</span> <span class="s2">&quot;document_title&quot;</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span>
+    <span class="n">allow_points</span> <span class="o">=</span> <span class="n">document_type</span> <span class="o">==</span> <span class="s2">&quot;assignment&quot;</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">],</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">location</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Hauptaufgabe </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">validate_task_metadata</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span>
+        <span class="n">_validate_points_policy</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">allow_points</span><span class="o">=</span><span class="n">allow_points</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">partitioned</span><span class="p">:</span>
+            <span class="n">_validate_partitioned_task_content</span><span class="p">(</span>
+                <span class="n">task</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="n">location</span><span class="p">,</span> <span class="n">allow_points</span><span class="o">=</span><span class="n">allow_points</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">markdown</span> <span class="o">=</span> <span class="n">_optional_text</span><span class="p">(</span>
+                <span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;markdown&quot;</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.markdown&quot;</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">markdown</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+                <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> enthaelt keinen Text.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_partitioned_task_content</span><span class="p">(</span>
+    <span class="n">task</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">allow_points</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft Unteraufgaben und Texttypen; meldet fehlenden Inhalt ohne Abbruch.&quot;&quot;&quot;</span>
+    <span class="n">subtasks</span> <span class="o">=</span> <span class="n">child_nodes</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">location</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">subtask</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">subtasks</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">validate_subtask</span><span class="p">(</span>
+            <span class="n">subtask</span><span class="p">,</span>
+            <span class="n">location</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">, Unteraufgabe </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">allow_points</span><span class="o">=</span><span class="n">allow_points</span><span class="p">,</span>
+            <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="n">introduction</span> <span class="o">=</span> <span class="n">_optional_text</span><span class="p">(</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;introduction_markdown&quot;</span><span class="p">),</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.introduction_markdown&quot;</span><span class="p">,</span>
+        <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">closing</span> <span class="o">=</span> <span class="n">_optional_text</span><span class="p">(</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;closing_markdown&quot;</span><span class="p">),</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.closing_markdown&quot;</span><span class="p">,</span>
+        <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">introduction</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">or</span> <span class="n">subtasks</span> <span class="ow">or</span> <span class="n">closing</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="ow">and</span> <span class="n">warn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> enthaelt keinen Inhalt.&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="validate_document_type">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.tasks.validate_document_type">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_document_type</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">expected_document_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft den Dokumenttyp und optional dessen erwarteten festen Wert.&quot;&quot;&quot;</span>
+    <span class="n">document_type</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;document_type&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">document_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">DOCUMENT_TYPES</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Die LLM-Antwort enthaelt keinen gueltigen document_type.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">expected_document_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">document_type</span> <span class="o">!=</span> <span class="n">expected_document_type</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Das Modell hat den document_type veraendert.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">document_type</span></div>
+
+
+
+<div class="viewcode-block" id="validate_task_metadata">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.tasks.validate_task_metadata">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_task_metadata</span><span class="p">(</span>
+    <span class="n">task</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft Metadaten, ohne sie zu verändern:</span>
+
+<span class="sd">    - id: &quot;2&quot; oder &quot;Aufgabe 2&quot; unauffällig; fehlend, null, 2, &quot;&quot; und &quot;  &quot; werden gemeldet.</span>
+<span class="sd">    - source_label/title: Text, null oder fehlend unauffällig; andere Typen werden gemeldet.</span>
+<span class="sd">    - points: null, 2 oder 2.5 unauffällig; fehlend, 0, -1, &quot;2&quot;, True und NaN/Inf</span>
+<span class="sd">      werden gemeldet und unverändert belassen.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">node_text</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">and</span> <span class="n">warn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.id ist kein nichtleerer Text.&quot;</span><span class="p">)</span>
+    <span class="n">_optional_text</span><span class="p">(</span>
+        <span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_label&quot;</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.source_label&quot;</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span>
+    <span class="p">)</span>
+    <span class="n">_optional_text</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.title&quot;</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span>
+    <span class="n">validate_points</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_preserved_task_metadata">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.tasks.validate_preserved_task_metadata">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_preserved_task_metadata</span><span class="p">(</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">partitioned</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Meldet geänderte id/source_label/title/points, ohne Werte zurückzusetzen.</span>
+
+<span class="sd">    Beispiel: points=3 in der Quelle und points=4 im Ergebnis erzeugt eine</span>
+<span class="sd">    Warnung; 4 bleibt erhalten. Identische Werte erzeugen keine Warnung.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Dieselbe Hauptaufgabe vor/nach der Partitionierung vergleichen:</span>
+    <span class="c1"># z. B. 10 → 12 Punkte nur melden; mit 12 weiterarbeiten, Quelle unverändert lassen.</span>
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;source_label&quot;</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;points&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">partitioned</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span> <span class="o">!=</span> <span class="n">source</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span> <span class="ow">and</span> <span class="n">warn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2"> wurde beim Partitionieren veraendert: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Quelle </span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span><span class="si">!r}</span><span class="s2">, Ergebnis </span><span class="si">{</span><span class="n">partitioned</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_subtask">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.tasks.validate_subtask">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_subtask</span><span class="p">(</span>
+    <span class="n">subtask</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">allow_points</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft rekursiv ohne Datenänderungen; meldet leere Blätter direkt über warn.&quot;&quot;&quot;</span>
+    <span class="c1"># Zuerst sicherstellen, dass die Unteraufgabe ein JSON-Objekt ist.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> ist kein JSON-Objekt.&quot;</span><span class="p">)</span>
+    <span class="c1"># Optionale Kennzeichnungen und Punktwerte melden, ohne sie umzuschreiben.</span>
+    <span class="n">_validate_optional_subtask_metadata</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span>
+    <span class="n">validate_points</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span>
+    <span class="n">_validate_points_policy</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">allow_points</span><span class="o">=</span><span class="n">allow_points</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">)</span>
+    <span class="c1"># Fehlende Kinder oder null nur beim Lesen als leere Liste behandeln.</span>
+    <span class="n">children</span> <span class="o">=</span> <span class="n">child_nodes</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="n">location</span><span class="p">)</span>
+    <span class="c1"># Alle Kinder rekursiv mit derselben Punkteregel und genauerer Ortsangabe prüfen.</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">children</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">validate_subtask</span><span class="p">(</span>
+            <span class="n">child</span><span class="p">,</span>
+            <span class="n">location</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">allow_points</span><span class="o">=</span><span class="n">allow_points</span><span class="p">,</span>
+            <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="c1"># Leerraum nur für die Inhaltsprüfung entfernen; den Originaltext nicht überschreiben.</span>
+    <span class="n">markdown</span> <span class="o">=</span> <span class="n">_optional_text</span><span class="p">(</span>
+        <span class="n">subtask</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;markdown&quot;</span><span class="p">),</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.markdown&quot;</span><span class="p">,</span>
+        <span class="n">warn</span><span class="o">=</span><span class="n">warn</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="c1"># Ein leeres Blatt nur melden und anschließend mit den übrigen Aufgaben fortfahren.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">markdown</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">children</span> <span class="ow">and</span> <span class="n">warn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> enthaelt keinen Inhalt.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_optional_subtask_metadata</span><span class="p">(</span>
+    <span class="n">subtask</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Meldet falsche Typen in optional ausgewerteten Unteraufgabenfeldern.&quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;title&quot;</span><span class="p">,</span> <span class="s2">&quot;source_label&quot;</span><span class="p">):</span>
+        <span class="n">_optional_text</span><span class="p">(</span>
+            <span class="n">subtask</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">warn</span><span class="o">=</span><span class="n">warn</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_optional_text</span><span class="p">(</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Liest optionalen Text und meldet andere Typen, ohne Quelldaten zu ändern.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">warn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> ist weder Text noch null; &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Wert bleibt </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2"> und wird beim Lesen als leer behandelt.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">text_or_empty</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_points_policy</span><span class="p">(</span>
+    <span class="n">item</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">allow_points</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Meldet Zahlenwerte im Feld ``points`` von Lösungen direkt über warn.</span>
+
+<span class="sd">    Beispiel: points=3 erzeugt bei reference_solution/student_solution eine</span>
+<span class="sd">    Warnung, bei assignment nicht. None (JSON-null) erzeugt keine Warnung.</span>
+<span class="sd">    Der Wert bleibt erhalten; ohne warn erfolgt keine Ausgabe. Ob der Wert eine</span>
+<span class="sd">    brauchbare Zahl ist, prüft ``validate_points`` separat.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">allow_points</span> <span class="ow">and</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;points&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">warn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warn</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.points ist </span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;points&#39;</span><span class="p">)</span><span class="si">!r}</span><span class="s2">; &quot;</span>
+            <span class="s2">&quot;fuer diesen Dokumenttyp wird null erwartet.&quot;</span>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="validate_points">
+<a class="viewcode-back" href="../../../api/developer/validation.html#grading_pipeline.validation.tasks.validate_points">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_points</span><span class="p">(</span>
+    <span class="n">item</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Meldet fehlende oder unbrauchbare Punkte, ohne den Wert zu verändern.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;points&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">warn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> enthaelt kein points-Feld.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">parse_optional_positive_points</span><span class="p">(</span>
+            <span class="n">item</span><span class="p">[</span><span class="s2">&quot;points&quot;</span><span class="p">],</span>
+            <span class="n">location</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">.points&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">warn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2"> Wert bleibt </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;points&#39;</span><span class="p">]</span><span class="si">!r}</span><span class="s2">.&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

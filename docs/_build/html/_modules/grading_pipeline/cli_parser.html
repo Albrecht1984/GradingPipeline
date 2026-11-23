@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.cli_parser &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../genindex.html" />
+    <link rel="search" title="Suche" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.cli_parser</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Definiert die Argumente der ``grading_pipeline``-Kommandozeile.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.extraction.task_extraction</span><span class="w"> </span><span class="kn">import</span> <span class="n">DOCUMENT_TYPES</span>
+
+
+<span class="n">ROOT</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+<span class="n">DEFAULT_VISUAL_EXTRACTION_PROMPT_PATH</span> <span class="o">=</span> <span class="n">ROOT</span> <span class="o">/</span> <span class="s2">&quot;prompts&quot;</span> <span class="o">/</span> <span class="s2">&quot;extract_page.txt&quot;</span>
+<span class="n">DEFAULT_TASK_EXTRACTION_PROMPT_PATH</span> <span class="o">=</span> <span class="n">ROOT</span> <span class="o">/</span> <span class="s2">&quot;prompts&quot;</span> <span class="o">/</span> <span class="s2">&quot;extract_tasks.txt&quot;</span>
+<span class="n">DEFAULT_TASK_PARTITIONING_PROMPT_PATH</span> <span class="o">=</span> <span class="n">ROOT</span> <span class="o">/</span> <span class="s2">&quot;prompts&quot;</span> <span class="o">/</span> <span class="s2">&quot;extract_tasks_partitioned.txt&quot;</span>
+<span class="n">DEFAULT_RUBRIC_PROMPT_PATH</span> <span class="o">=</span> <span class="n">ROOT</span> <span class="o">/</span> <span class="s2">&quot;prompts&quot;</span> <span class="o">/</span> <span class="s2">&quot;create_rubric.txt&quot;</span>
+<span class="n">DEFAULT_GRADING_PROMPT_PATH</span> <span class="o">=</span> <span class="n">ROOT</span> <span class="o">/</span> <span class="s2">&quot;prompts&quot;</span> <span class="o">/</span> <span class="s2">&quot;grade_task.txt&quot;</span>
+<span class="n">DEFAULT_IMAGE_GRADING_PROMPT_PATH</span> <span class="o">=</span> <span class="n">ROOT</span> <span class="o">/</span> <span class="s2">&quot;prompts&quot;</span> <span class="o">/</span> <span class="s2">&quot;grade_task_with_images.txt&quot;</span>
+<span class="n">DEFAULT_MONOLITHIC_GRADING_PROMPT_PATH</span> <span class="o">=</span> <span class="n">ROOT</span> <span class="o">/</span> <span class="s2">&quot;prompts&quot;</span> <span class="o">/</span> <span class="s2">&quot;grade_monolithic.txt&quot;</span>
+<span class="n">MODEL_PROVIDERS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;ollama&quot;</span><span class="p">,</span> <span class="s2">&quot;openai&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="boolean_value">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.boolean_value">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">boolean_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Akzeptiert ausschließlich die expliziten Werte true und false.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;true&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;false&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span><span class="s2">&quot;Erwartet wird true oder false.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="positive_int">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.positive_int">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">positive_int</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parst eine ganze Zahl, die echt größer als null sein muss.&quot;&quot;&quot;</span>
+    <span class="n">parsed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">parsed</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span><span class="s2">&quot;Der Wert muss größer als null sein.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parsed</span></div>
+
+
+
+<div class="viewcode-block" id="positive_finite_float">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.positive_finite_float">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">positive_finite_float</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parst eine endliche Fließkommazahl, die echt positiv sein muss.&quot;&quot;&quot;</span>
+    <span class="n">parsed</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">parsed</span><span class="p">)</span> <span class="ow">or</span> <span class="n">parsed</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span>
+            <span class="s2">&quot;Der Wert muss eine endliche Zahl größer als null sein.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">parsed</span></div>
+
+
+
+<div class="viewcode-block" id="non_negative_finite_float">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.non_negative_finite_float">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">non_negative_finite_float</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parst eine endliche Fließkommazahl, die nicht negativ sein darf.&quot;&quot;&quot;</span>
+    <span class="n">parsed</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">parsed</span><span class="p">)</span> <span class="ow">or</span> <span class="n">parsed</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentTypeError</span><span class="p">(</span>
+            <span class="s2">&quot;Der Wert muss eine endliche, nicht negative Zahl sein.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">parsed</span></div>
+
+
+
+<div class="viewcode-block" id="add_model_connection_arguments">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.add_model_connection_arguments">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_model_connection_arguments</span><span class="p">(</span><span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ergänzt die gemeinsamen Provider-Endpunkte und API-Key-Einstellung.&quot;&quot;&quot;</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--ollama-base-url&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;http://localhost:11434&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ollama-Basis-URL (Standard: </span><span class="si">%(default)s</span><span class="s2">)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--ollama-num-ctx&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">positive_int</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Ollama-Kontextgroesse pro Modellaufruf; ohne Angabe gilt der &quot;</span>
+            <span class="s2">&quot;Modell- oder Serverstandard&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--openai-base-url&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;https://api.openai.com/v1&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;OpenAI-API-Basis-URL (Standard: </span><span class="si">%(default)s</span><span class="s2">)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--openai-api-key-env&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;OPENAI_API_KEY&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Umgebungsvariable mit dem OpenAI-API-Key (Standard: </span><span class="si">%(default)s</span><span class="s2">)&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="add_model_arguments">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.add_model_arguments">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_model_arguments</span><span class="p">(</span>
+    <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">model_help</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ergänzt Modell, Provider, Verbindung und Laufzeit einer Einzelstufe.&quot;&quot;&quot;</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--model&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="n">model_help</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--provider&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="n">MODEL_PROVIDERS</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;ollama&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Modell-Provider (Standard: </span><span class="si">%(default)s</span><span class="s2">)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_model_connection_arguments</span><span class="p">(</span><span class="n">parser</span><span class="p">)</span>
+    <span class="n">add_runtime_arguments</span><span class="p">(</span><span class="n">parser</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="add_prompt_argument">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.add_prompt_argument">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_prompt_argument</span><span class="p">(</span>
+    <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">prompt_default</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">prompt_help</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ergänzt die Promptdatei einer Modellstufe.&quot;&quot;&quot;</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--prompt-file&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">prompt_default</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prompt_help</span><span class="si">}</span><span class="s2"> (Standard: %(default)s)&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="add_runtime_arguments">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.add_runtime_arguments">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_runtime_arguments</span><span class="p">(</span>
+    <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">timeout_help</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Timeout pro Modellaufruf in Sekunden&quot;</span><span class="p">,</span>
+    <span class="n">temperature_help</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Modell-Temperatur&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ergänzt Timeout und Temperatur für eine Modellstufe.&quot;&quot;&quot;</span>
+    <span class="n">option_prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">-&quot;</span> <span class="k">if</span> <span class="n">prefix</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{</span><span class="n">option_prefix</span><span class="si">}</span><span class="s2">timeout&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">positive_finite_float</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">1800.0</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">timeout_help</span><span class="si">}</span><span class="s2"> (Standard: %(default)s)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;--</span><span class="si">{</span><span class="n">option_prefix</span><span class="si">}</span><span class="s2">temperature&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">non_negative_finite_float</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">temperature_help</span><span class="si">}</span><span class="s2">; ohne Angabe gilt der Provider-/Modellstandard&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="add_overwrite_argument">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.add_overwrite_argument">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_overwrite_argument</span><span class="p">(</span>
+    <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">help_text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ergänzt den einheitlichen Schalter zum Ignorieren vorhandener Ergebnisse.&quot;&quot;&quot;</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--overwrite&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">boolean_value</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;{true,false}&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="n">help_text</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+
+<div class="viewcode-block" id="add_common_document_arguments">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.add_common_document_arguments">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_common_document_arguments</span><span class="p">(</span>
+    <span class="n">parser</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ergänzt die Dokumenteingaben der Bewertung.&quot;&quot;&quot;</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--assignment-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner der partitionierten Aufgabenstellung&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--student-solution-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner der partitionierten studentischen Lösung&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--output-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner für die erzeugten Ergebnisse und Berichte&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--reference-solution-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optionaler Ausgabeordner der partitionierten Musterlösung&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--rubrics-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optionaler Ausgabeordner der erzeugten Rubrics&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--context&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="p">[],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optionale Kontextdatei; für mehrere Dateien wiederholen&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--context-map&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Optionales JSON-Manifest, das jeder bewertbaren Blattaufgabe &quot;</span>
+            <span class="s2">&quot;eigene Kontextdateien zuordnet&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--skip-target&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="p">[],</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;TARGET_PATH&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Bewertungsziel gezielt als runtime_failure überspringen; &quot;</span>
+            <span class="s2">&quot;für mehrere Ziele wiederholen&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">help_text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erzeugt einen Unterbefehl mit deaktivierten Optionsabkürzungen.&quot;&quot;&quot;</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">subparsers</span><span class="o">.</span><span class="n">add_parser</span><span class="p">(</span>
+        <span class="n">name</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="n">help_text</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="n">help_text</span><span class="p">,</span>
+        <span class="n">allow_abbrev</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--verbose&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">boolean_value</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;{true,false}&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Fortschritt und alle erzeugten oder gecachten Artefaktpfade ausgeben &quot;</span>
+            <span class="s2">&quot;(Standard: aktiviert)&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">command</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_validate_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definiert die modellfreie Prüfung eines Artefakt-Ordners.&quot;&quot;&quot;</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">_add_command</span><span class="p">(</span>
+        <span class="n">subparsers</span><span class="p">,</span>
+        <span class="s2">&quot;validate&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Vorhandene GradingPipeline-Artefakte prüfen und Befunde ausgeben&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--input&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ordner mit den zu prüfenden GradingPipeline-Artefakten&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_extract_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definiert die visuelle Extraktion eines PDF- oder Bilddokuments.&quot;&quot;&quot;</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">_add_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">,</span> <span class="s2">&quot;extract&quot;</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Bild oder PDF nach Markdown extrahieren&quot;</span><span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--input&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;PDF oder Bilddatei&quot;</span><span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--output-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner&quot;</span><span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--document-type&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="n">DOCUMENT_TYPES</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Dokumenttyp: assignment, reference_solution oder student_solution&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_model_arguments</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">model_help</span><span class="o">=</span><span class="s2">&quot;Name des Vision-Modells&quot;</span><span class="p">)</span>
+    <span class="n">add_prompt_argument</span><span class="p">(</span>
+        <span class="n">command</span><span class="p">,</span> <span class="n">prompt_default</span><span class="o">=</span><span class="n">DEFAULT_VISUAL_EXTRACTION_PROMPT_PATH</span><span class="p">,</span>
+        <span class="n">prompt_help</span><span class="o">=</span><span class="s2">&quot;Prompt für die visuelle Extraktion&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--dpi&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">positive_int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">220</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Render-Auflösung für PDFs (Standard: </span><span class="si">%(default)s</span><span class="s2">)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_overwrite_argument</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Vorhandene Ergebnisse ignorieren und neu erzeugen&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_prepare_images_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definiert die modellfreie Erzeugung der Bildsupplemente.&quot;&quot;&quot;</span>
+
+    <span class="n">command</span> <span class="o">=</span> <span class="n">_add_command</span><span class="p">(</span>
+        <span class="n">subparsers</span><span class="p">,</span>
+        <span class="s2">&quot;prepare-images&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Bildsupplemente aus Reviewed- oder Raw-Visual-Extraction erzeugen&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--input&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner der Visual Extraction&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--document-type&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="n">DOCUMENT_TYPES</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Dokumenttyp: assignment, reference_solution oder student_solution&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_extract_tasks_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definiert die Extraktion vollständiger Aufgaben aus dem Markdown der Visual Extraction.&quot;&quot;&quot;</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">_add_command</span><span class="p">(</span>
+        <span class="n">subparsers</span><span class="p">,</span> <span class="s2">&quot;extract-tasks&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Vollständige Aufgaben per Textmodell aus dem Markdown der Visual Extraction extrahieren&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--input&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner der visuellen Extraktion mit 03_vlm_export.raw.md&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--output-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Separater Ausgabeordner der Aufgabenextraktion; &quot;</span>
+            <span class="s2">&quot;ohne Angabe wird der Eingabeordner verwendet&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--document-type&quot;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="n">DOCUMENT_TYPES</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Dokumenttyp: assignment, reference_solution oder student_solution&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_model_arguments</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">model_help</span><span class="o">=</span><span class="s2">&quot;Name des Textmodells&quot;</span><span class="p">)</span>
+    <span class="n">add_prompt_argument</span><span class="p">(</span>
+        <span class="n">command</span><span class="p">,</span> <span class="n">prompt_default</span><span class="o">=</span><span class="n">DEFAULT_TASK_EXTRACTION_PROMPT_PATH</span><span class="p">,</span>
+        <span class="n">prompt_help</span><span class="o">=</span><span class="s2">&quot;Prompt für die Aufgabenextraktion&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_overwrite_argument</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Vorhandene Aufgabenextraktion ignorieren und neu erzeugen&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_partition_tasks_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definiert die Partitionierung extrahierter Aufgaben in Unteraufgaben.&quot;&quot;&quot;</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">_add_command</span><span class="p">(</span>
+        <span class="n">subparsers</span><span class="p">,</span> <span class="s2">&quot;partition-tasks&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Bereits extrahierte Aufgaben per Textmodell in Unteraufgaben zerlegen&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--input&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner der Aufgabenextraktion mit 04_task_extraction.raw.json&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--output-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Separater Ausgabeordner der Aufgabenpartitionierung; &quot;</span>
+            <span class="s2">&quot;ohne Angabe wird der Eingabeordner verwendet&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">add_model_arguments</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">model_help</span><span class="o">=</span><span class="s2">&quot;Name des Textmodells&quot;</span><span class="p">)</span>
+    <span class="n">add_prompt_argument</span><span class="p">(</span>
+        <span class="n">command</span><span class="p">,</span> <span class="n">prompt_default</span><span class="o">=</span><span class="n">DEFAULT_TASK_PARTITIONING_PROMPT_PATH</span><span class="p">,</span>
+        <span class="n">prompt_help</span><span class="o">=</span><span class="s2">&quot;Prompt für die Aufgabenpartitionierung&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_overwrite_argument</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Vorhandene Partitionierung ignorieren und neu erzeugen&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_create_rubrics_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definiert die Rubric-Erzeugung aus Aufgabenstellung und Musterlösung.&quot;&quot;&quot;</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">_add_command</span><span class="p">(</span>
+        <span class="n">subparsers</span><span class="p">,</span> <span class="s2">&quot;create-rubrics&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Rubrics aus strukturgleicher Aufgabenstellung und Musterlösung erzeugen&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--assignment-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner der partitionierten Aufgabenstellung&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--reference-solution-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner der partitionierten Musterlösung&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--output-dir&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner für Strukturprüfung, Cache und Rubrics&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_model_arguments</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">model_help</span><span class="o">=</span><span class="s2">&quot;Textmodell für die Rubric-Erstellung&quot;</span><span class="p">)</span>
+    <span class="n">add_prompt_argument</span><span class="p">(</span>
+        <span class="n">command</span><span class="p">,</span> <span class="n">prompt_default</span><span class="o">=</span><span class="n">DEFAULT_RUBRIC_PROMPT_PATH</span><span class="p">,</span>
+        <span class="n">prompt_help</span><span class="o">=</span><span class="s2">&quot;Prompt für die Rubric-Erstellung&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_overwrite_argument</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Vorhandenen Rubric-Cache ignorieren und neu erzeugen&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_grade_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definiert die Bewertung einer strukturgleichen studentischen Lösung.&quot;&quot;&quot;</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">_add_command</span><span class="p">(</span>
+        <span class="n">subparsers</span><span class="p">,</span> <span class="s2">&quot;grade&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Eine strukturgleiche studentische Lösung bewerten&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_common_document_arguments</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--student-id&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optionale Kennung für Ergebnisdateien und Berichte&quot;</span><span class="p">)</span>
+    <span class="n">add_model_arguments</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">model_help</span><span class="o">=</span><span class="s2">&quot;Textmodell für die Bewertung&quot;</span><span class="p">)</span>
+    <span class="n">add_prompt_argument</span><span class="p">(</span>
+        <span class="n">command</span><span class="p">,</span> <span class="n">prompt_default</span><span class="o">=</span><span class="n">DEFAULT_GRADING_PROMPT_PATH</span><span class="p">,</span>
+        <span class="n">prompt_help</span><span class="o">=</span><span class="s2">&quot;Prompt für die Bewertung&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_overwrite_argument</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Vorhandenen Bewertungs-Cache ignorieren und neu erzeugen&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_grade_with_images_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definiert die ausdrücklich multimodale Bewertung mit Bildsupplementen.&quot;&quot;&quot;</span>
+
+    <span class="n">command</span> <span class="o">=</span> <span class="n">_add_command</span><span class="p">(</span>
+        <span class="n">subparsers</span><span class="p">,</span>
+        <span class="s2">&quot;grade-with-images&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Eine studentische Lösung mit manuell zugeordneten Bildsupplementen bewerten&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_common_document_arguments</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--student-id&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Optionale Kennung für Ergebnisdateien und Berichte&quot;</span><span class="p">)</span>
+    <span class="n">add_model_arguments</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">model_help</span><span class="o">=</span><span class="s2">&quot;Vision-Modell für die Bewertung&quot;</span><span class="p">)</span>
+    <span class="n">add_prompt_argument</span><span class="p">(</span>
+        <span class="n">command</span><span class="p">,</span>
+        <span class="n">prompt_default</span><span class="o">=</span><span class="n">DEFAULT_IMAGE_GRADING_PROMPT_PATH</span><span class="p">,</span>
+        <span class="n">prompt_help</span><span class="o">=</span><span class="s2">&quot;Prompt für die Bewertung mit Bildern&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_overwrite_argument</span><span class="p">(</span>
+        <span class="n">command</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Vorhandenen multimodalen Bewertungs-Cache ignorieren und neu erzeugen&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_add_grade_monolithic_command</span><span class="p">(</span>
+    <span class="n">subparsers</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">_SubParsersAction</span><span class="p">[</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definiert die unstrukturierte Bewertung dreier vollständiger Dokumente.&quot;&quot;&quot;</span>
+
+    <span class="n">command</span> <span class="o">=</span> <span class="n">_add_command</span><span class="p">(</span>
+        <span class="n">subparsers</span><span class="p">,</span>
+        <span class="s2">&quot;grade-monolithic&quot;</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Aufgabenstellung, Musterlösung und studentische Lösung in einem &quot;</span>
+            <span class="s2">&quot;freien multimodalen Modellaufruf bewerten&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--input&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Ordner mit assignment, reference_solution und student_solution; &quot;</span>
+            <span class="s2">&quot;jeder Unterordner muss genau ein PDF oder Bild enthalten&quot;</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--output-dir&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ausgabeordner; ohne Angabe wird der Eingabeordner verwendet&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_model_arguments</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">model_help</span><span class="o">=</span><span class="s2">&quot;Vision-Modell für die monolithische Bewertung&quot;</span><span class="p">)</span>
+    <span class="n">add_prompt_argument</span><span class="p">(</span>
+        <span class="n">command</span><span class="p">,</span>
+        <span class="n">prompt_default</span><span class="o">=</span><span class="n">DEFAULT_MONOLITHIC_GRADING_PROMPT_PATH</span><span class="p">,</span>
+        <span class="n">prompt_help</span><span class="o">=</span><span class="s2">&quot;Prompt für die monolithische Bewertung&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">command</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--dpi&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">positive_int</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">220</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Render-Auflösung für PDFs (Standard: </span><span class="si">%(default)s</span><span class="s2">)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">add_overwrite_argument</span><span class="p">(</span>
+        <span class="n">command</span><span class="p">,</span>
+        <span class="n">help_text</span><span class="o">=</span><span class="s2">&quot;Vorhandene monolithische Bewertung ignorieren und neu erzeugen&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="build_parser">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli_parser.build_parser">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_parser</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erzeugt den vollständigen Parser der ``grading_pipeline``-Kommandozeile.&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Extrahiert und verarbeitet Dokumente mit lokalen oder bereitgestellten Modellen.&quot;</span><span class="p">,</span>
+        <span class="n">allow_abbrev</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">subparsers</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">add_subparsers</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="s2">&quot;command&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">_add_validate_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">)</span>
+    <span class="n">_add_extract_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">)</span>
+    <span class="n">_add_prepare_images_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">)</span>
+    <span class="n">_add_extract_tasks_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">)</span>
+    <span class="n">_add_partition_tasks_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">)</span>
+    <span class="n">_add_create_rubrics_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">)</span>
+    <span class="n">_add_grade_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">)</span>
+    <span class="n">_add_grade_with_images_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">)</span>
+    <span class="n">_add_grade_monolithic_command</span><span class="p">(</span><span class="n">subparsers</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parser</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

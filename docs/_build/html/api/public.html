@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Öffentliche API &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=245627df"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../genindex.html" />
+    <link rel="search" title="Suche" href="../search.html" />
+    <link rel="next" title="Entwicklerreferenz" href="developer/index.html" />
+    <link rel="prev" title="API-Referenz" href="index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="offentliche-api">
+<h1>Öffentliche API<a class="headerlink" href="#offentliche-api" title="Link to this heading">¶</a></h1>
+<p>Diese Seite dokumentiert die acht Namen aus <code class="docutils literal notranslate"><span class="pre">grading_pipeline.__all__</span></code>.
+Sie sind direkt aus <code class="docutils literal notranslate"><span class="pre">grading_pipeline</span></code> importierbar. Die Referenz
+verwendet die Module, in denen die Klassen definiert sind, damit die
+Quellcodeansichten zu den richtigen Klassen und Methoden zurückverlinken.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">GradingPipeline</span><span class="p">,</span>
+    <span class="n">GradingPipelineResult</span><span class="p">,</span>
+    <span class="n">TaskExtractionPipeline</span><span class="p">,</span>
+    <span class="n">TaskExtractionResult</span><span class="p">,</span>
+    <span class="n">TaskPartitioningPipeline</span><span class="p">,</span>
+    <span class="n">TaskPartitioningResult</span><span class="p">,</span>
+    <span class="n">VisualExtractionPipeline</span><span class="p">,</span>
+    <span class="n">VisualExtractionResult</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Weitere Module beschreibt die <a class="reference internal" href="developer/index.html"><span class="doc">Entwicklerreferenz</span></a>.</p>
+<section id="visuelle-extraktion">
+<h2>Visuelle Extraktion<a class="headerlink" href="#visuelle-extraktion" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.visual_extraction.VisualExtractionPipeline">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.visual_extraction.</span></span><span class="sig-name descname"><span class="pre">VisualExtractionPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">220</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">document_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/extraction/visual_extraction.html#VisualExtractionPipeline"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.visual_extraction.VisualExtractionPipeline" title="Link to this definition">¶</a></dt>
+<dd><p>Rendert Dokumente und transkribiert jede Seite mit einem Vision-Modell.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>BaseChatModel</em>)</p></li>
+<li><p><strong>prompt</strong> (<em>str</em>)</p></li>
+<li><p><strong>dpi</strong> (<em>int</em>)</p></li>
+<li><p><strong>document_type</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>progress</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.visual_extraction.VisualExtractionPipeline.extract">
+<span class="sig-name descname"><span class="pre">extract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/extraction/visual_extraction.html#VisualExtractionPipeline.extract"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.visual_extraction.VisualExtractionPipeline.extract" title="Link to this definition">¶</a></dt>
+<dd><p>Extrahiert alle Seiten und erzeugt Markdown sowie Dokumentmanifest.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source</strong> (<em>Path</em>)</p></li>
+<li><p><strong>output_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>)</p></li>
+<li><p><strong>use_cache</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#grading_pipeline.extraction.visual_extraction.VisualExtractionResult" title="grading_pipeline.extraction.visual_extraction.VisualExtractionResult"><em>VisualExtractionResult</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.visual_extraction.VisualExtractionResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.visual_extraction.</span></span><span class="sig-name descname"><span class="pre">VisualExtractionResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">markdown_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">document_json_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">page_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/extraction/visual_extraction.html#VisualExtractionResult"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.visual_extraction.VisualExtractionResult" title="Link to this definition">¶</a></dt>
+<dd><p>Bündelt die Ergebnisse einer visuellen Extraktion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>markdown_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>document_json_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>page_count</strong> (<em>int</em>)</p></li>
+<li><p><strong>from_cache</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="aufgabenextraktion">
+<h2>Aufgabenextraktion<a class="headerlink" href="#aufgabenextraktion" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.task_extraction.TaskExtractionPipeline">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.task_extraction.</span></span><span class="sig-name descname"><span class="pre">TaskExtractionPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt_template</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">document_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/extraction/task_extraction.html#TaskExtractionPipeline"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.task_extraction.TaskExtractionPipeline" title="Link to this definition">¶</a></dt>
+<dd><p>Extrahiert vollständige Aufgaben in einem semantischen Modelldurchlauf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>BaseChatModel</em>)</p></li>
+<li><p><strong>prompt_template</strong> (<em>str</em>)</p></li>
+<li><p><strong>document_type</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>progress</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>warn</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.task_extraction.TaskExtractionPipeline.extract">
+<span class="sig-name descname"><span class="pre">extract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">document_dir</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/extraction/task_extraction.html#TaskExtractionPipeline.extract"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.task_extraction.TaskExtractionPipeline.extract" title="Link to this definition">¶</a></dt>
+<dd><p>Extrahiert Aufgaben und schreibt Ergebnisse optional in einen separaten Ordner.</p>
+<p>Ohne <code class="docutils literal notranslate"><span class="pre">output_dir</span></code> bleibt das bisherige Verhalten erhalten: Eingabe- und
+Ausgabeordner sind identisch. Bei einem separaten Ausgabeordner werden die
+Visual-Extraction-Artefakte ausschließlich aus <code class="docutils literal notranslate"><span class="pre">document_dir</span></code> gelesen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>document_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>output_dir</strong> (<em>Path</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>)</p></li>
+<li><p><strong>use_cache</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#grading_pipeline.extraction.base.TaskExtractionResult" title="grading_pipeline.extraction.base.TaskExtractionResult"><em>TaskExtractionResult</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.base.TaskExtractionResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.base.</span></span><span class="sig-name descname"><span class="pre">TaskExtractionResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">document_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">combined_markdown_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extraction_json_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/extraction/base.html#TaskExtractionResult"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.base.TaskExtractionResult" title="Link to this definition">¶</a></dt>
+<dd><p>Ergebnis der Extraktion vollständiger Aufgaben.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>document_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>combined_markdown_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>extraction_json_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>task_count</strong> (<em>int</em>)</p></li>
+<li><p><strong>from_cache</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="aufgabenpartitionierung">
+<h2>Aufgabenpartitionierung<a class="headerlink" href="#aufgabenpartitionierung" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.task_partitioning.TaskPartitioningPipeline">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.task_partitioning.</span></span><span class="sig-name descname"><span class="pre">TaskPartitioningPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt_template</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">document_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/extraction/task_partitioning.html#TaskPartitioningPipeline"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.task_partitioning.TaskPartitioningPipeline" title="Link to this definition">¶</a></dt>
+<dd><p>Partitioniert pro Hauptaufgabe einmalig; Inhaltsabweichungen werden nur gemeldet.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>BaseChatModel</em>)</p></li>
+<li><p><strong>prompt_template</strong> (<em>str</em>)</p></li>
+<li><p><strong>document_type</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>progress</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>warn</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.task_partitioning.TaskPartitioningPipeline.extract">
+<span class="sig-name descname"><span class="pre">extract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">document_dir</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/extraction/task_partitioning.html#TaskPartitioningPipeline.extract"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.task_partitioning.TaskPartitioningPipeline.extract" title="Link to this definition">¶</a></dt>
+<dd><p>Partitioniert alle Quellaufgaben und schreibt Einzel- und Gesamtausgaben.</p>
+<p>Für jede Hauptaufgabe wird ein passender Cache-Kandidat verwendet oder ein
+Modellaufruf ausgeführt. Nach jeder erfolgreichen Hauptaufgabe wird der
+bisherige Cache vollständig geschrieben.
+Erst nach der letzten Hauptaufgabe entstehen Gesamt-JSON und Markdown-Exporte.
+Ein Fehler stoppt den Lauf; frühere Einzelnachweise bleiben
+erhalten und können bei einem späteren Cache-Lauf wiederverwendet werden.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>document_dir</strong> (<em>Path</em>) – Ordner mit dem JSON der vorausgehenden Aufgabenextraktion.</p></li>
+<li><p><strong>output_dir</strong> (<em>Path</em><em> | </em><em>None</em>) – Optionaler separater Ausgabeordner. Ohne Angabe wird
+<code class="docutils literal notranslate"><span class="pre">document_dir</span></code> auch als Ausgabeordner verwendet.</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Entfernt vorhandene Partitionsausgaben einschließlich des
+Antwortordners. Eine dadurch gelöschte Antwort ist kein Cache-Treffer.</p></li>
+<li><p><strong>use_cache</strong> (<em>bool</em>) – Liest vorhandene Cache-Metadaten und prüft die Einzelnachweise.
+Auch Cache-Läufe erstellen Gesamtartefakte und Markdown erneut.
+Ohne beide Optionen sind vorhandene Partitionsausgaben ein Fehler.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabe<span class="colon">:</span></dt>
+<dd class="field-even"><p>Ergebnis mit Exportpfaden und Anzahl der obersten Hauptaufgaben, nicht der
+Unteraufgaben. <code class="docutils literal notranslate"><span class="pre">from_cache</span></code> ist nur bei einer nicht leeren, vollständig
+ohne neue Modellversuche verarbeiteten Quelle wahr.</p>
+</dd>
+<dt class="field-odd">Verursacht<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – Wenn die Quelldatei fehlt.</p></li>
+<li><p><strong>FileExistsError</strong> – Wenn vorhandene Ausgaben weder ersetzt noch als Cache
+    berücksichtigt werden dürfen.</p></li>
+<li><p><strong>ValueError</strong> – Bei ungültiger Quelle oder nicht akzeptierbarer Endpartition.</p></li>
+<li><p><strong>OSError</strong> – Wenn das Lesen, Schreiben oder Entfernen von Artefakten scheitert.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#grading_pipeline.extraction.base.TaskPartitioningResult" title="grading_pipeline.extraction.base.TaskPartitioningResult"><em>TaskPartitioningResult</em></a></p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Bemerkung</p>
+<p>Providerfehler werden nicht abgefangen und brechen den Lauf ebenfalls ab.</p>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.base.TaskPartitioningResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.base.</span></span><span class="sig-name descname"><span class="pre">TaskPartitioningResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">document_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">combined_markdown_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extraction_json_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/extraction/base.html#TaskPartitioningResult"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.base.TaskPartitioningResult" title="Link to this definition">¶</a></dt>
+<dd><p>Ergebnis der Zerlegung vollständiger Aufgaben in Unteraufgaben.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>document_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>combined_markdown_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>extraction_json_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>task_count</strong> (<em>int</em>)</p></li>
+<li><p><strong>from_cache</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="bewertung">
+<h2>Bewertung<a class="headerlink" href="#bewertung" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.grading.GradingPipeline">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.grading.</span></span><span class="sig-name descname"><span class="pre">GradingPipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt_template</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_images</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/grading/grading.html#GradingPipeline"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.grading.GradingPipeline" title="Link to this definition">¶</a></dt>
+<dd><p>Bewertet strukturell ausgerichtete Blattaufgaben mit je einem Modellaufruf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>BaseChatModel</em>)</p></li>
+<li><p><strong>prompt_template</strong> (<em>str</em>)</p></li>
+<li><p><strong>with_images</strong> (<em>bool</em>)</p></li>
+<li><p><strong>progress</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>warn</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="grading_pipeline.grading.grading.GradingPipeline.grade">
+<span class="sig-name descname"><span class="pre">grade</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">assignment_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">student_solution_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_solution_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rubrics_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_files</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_targets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">student_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/grading/grading.html#GradingPipeline.grade"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.grading.GradingPipeline.grade" title="Link to this definition">¶</a></dt>
+<dd><p>Bewertet alle Blattaufgaben und erzeugt Cache, Ergebnisse und Berichte.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>assignment_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>student_solution_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>output_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>reference_solution_dir</strong> (<em>Path</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>rubrics_dir</strong> (<em>Path</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>context_files</strong> (<em>list</em><em>[</em><em>Path</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>context_map</strong> (<em>Path</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>skip_targets</strong> (<em>list</em><em>[</em><em>str</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>student_id</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#grading_pipeline.grading.grading.GradingPipelineResult" title="grading_pipeline.grading.grading.GradingPipelineResult"><em>GradingPipelineResult</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.grading.GradingPipelineResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.grading.</span></span><span class="sig-name descname"><span class="pre">GradingPipelineResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">structure_check_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">results_json_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">report_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feedback_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graded_task_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failed_task_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">from_cache</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/grading_pipeline/grading/grading.html#GradingPipelineResult"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.grading.GradingPipelineResult" title="Link to this definition">¶</a></dt>
+<dd><p>Beschreibt Ergebnisdateien, Aufgabenzahlen und Cache-Status eines Laufs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_dir</strong> (<em>Path</em>)</p></li>
+<li><p><strong>structure_check_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>results_json_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>report_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>feedback_path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>graded_task_count</strong> (<em>int</em>)</p></li>
+<li><p><strong>failed_task_count</strong> (<em>int</em>)</p></li>
+<li><p><strong>from_cache</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API-Referenz</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Öffentliche API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="developer/index.html">Entwicklerreferenz</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">API-Referenz</a><ul>
+      <li>Previous: <a href="index.html" title="vorheriges Kapitel">API-Referenz</a></li>
+      <li>Next: <a href="developer/index.html" title="nächstes Kapitel">Entwicklerreferenz</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/api/public.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

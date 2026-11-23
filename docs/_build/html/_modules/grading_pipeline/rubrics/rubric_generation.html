@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.rubrics.rubric_generation &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../../genindex.html" />
+    <link rel="search" title="Suche" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.rubrics.rubric_generation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Erzeugt und validiert Rubrics für strukturell ausgerichtete Blattaufgaben.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.prompts</span><span class="w"> </span><span class="kn">import</span> <span class="n">PromptTemplate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.language_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseChatModel</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.artifact_names</span><span class="w"> </span><span class="kn">import</span> <span class="n">RUBRIC_ARTIFACTS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.caching.common</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">load_cached_raw_result</span><span class="p">,</span>
+    <span class="n">read_matching_cache</span><span class="p">,</span>
+    <span class="n">write_cache_document</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.models.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">model_identity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.models.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">response_artifact</span><span class="p">,</span> <span class="n">response_text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.json_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.grading.documents</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoadedDocument</span><span class="p">,</span> <span class="n">read_partitioned_document</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.models.json</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_model_json_object</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.models.prompts</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_prompt_template</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.pipeline_artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">filename_stem</span><span class="p">,</span>
+    <span class="n">ModelCallArtifacts</span><span class="p">,</span>
+    <span class="n">model_call_artifacts</span><span class="p">,</span>
+    <span class="n">prepare_model_output</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.model_calls</span><span class="w"> </span><span class="kn">import</span> <span class="n">invoke_json_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.statistics</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">write_model_call_statistics</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_rubric_structure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.reporting</span><span class="w"> </span><span class="kn">import</span> <span class="n">render_rubrics_markdown</span><span class="p">,</span> <span class="n">structure_check_payload</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.targets</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">RubricTarget</span><span class="p">,</span>
+    <span class="n">build_rubric_targets</span><span class="p">,</span>
+    <span class="n">combine_target_and_rubric</span><span class="p">,</span>
+    <span class="n">target_input_payload</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="RubricGenerationResult">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.rubrics.rubric_generation.RubricGenerationResult">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RubricGenerationResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Beschreibt die erzeugten Rubric-Dateien und ihren Cache-Status.&quot;&quot;&quot;</span>
+
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">structure_check_path</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">rubrics_json_path</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">rubrics_markdown_path</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">rubric_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">from_cache</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">failed_rubric_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+
+<div class="viewcode-block" id="RubricGenerationInputs">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.rubrics.rubric_generation.RubricGenerationInputs">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RubricGenerationInputs</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bündelt Aufgabenstellung, Musterlösung und abgeleitete Rubric-Ziele.&quot;&quot;&quot;</span>
+
+    <span class="n">assignment</span><span class="p">:</span> <span class="n">LoadedDocument</span>
+    <span class="n">reference_solution</span><span class="p">:</span> <span class="n">LoadedDocument</span>
+    <span class="n">targets</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">RubricTarget</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="RubricGenerationPaths">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.rubrics.rubric_generation.RubricGenerationPaths">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RubricGenerationPaths</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enthält sämtliche Datei- und Ordnerpfade eines Rubric-Laufs.&quot;&quot;&quot;</span>
+
+    <span class="n">inputs</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">responses</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">structure</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">rubrics</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">reviewed_rubrics</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">export</span><span class="p">:</span> <span class="n">Path</span></div>
+
+
+
+<div class="viewcode-block" id="RubricGenerationRunSetup">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.rubrics.rubric_generation.RubricGenerationRunSetup">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RubricGenerationRunSetup</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hält vorbereitete Pfade und Cache-Verfügbarkeit eines Rubric-Laufs.&quot;&quot;&quot;</span>
+
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">paths</span><span class="p">:</span> <span class="n">RubricGenerationPaths</span>
+    <span class="n">cache_available</span><span class="p">:</span> <span class="nb">bool</span></div>
+
+
+
+<div class="viewcode-block" id="RubricTargetAttempt">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.rubrics.rubric_generation.RubricTargetAttempt">[Doku]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RubricTargetAttempt</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hält den Ergebniszustand für ein Rubric-Ziel.&quot;&quot;&quot;</span>
+
+    <span class="n">artifacts</span><span class="p">:</span> <span class="n">ModelCallArtifacts</span>
+    <span class="n">from_cache</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">rubric</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="RubricGenerationState">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.rubrics.rubric_generation.RubricGenerationState">[Doku]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RubricGenerationState</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sammelt Rubrics und Cache-Zustände eines Laufs.&quot;&quot;&quot;</span>
+
+    <span class="n">rubrics</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">cache_hits</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">failed_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+
+<div class="viewcode-block" id="RubricGenerationPipeline">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.rubrics.rubric_generation.RubricGenerationPipeline">[Doku]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RubricGenerationPipeline</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erzeugt eine Rubric pro strukturell ausgerichtetem Blattknoten.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">BaseChatModel</span><span class="p">,</span>
+        <span class="n">prompt_template</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">progress</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">warn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Konfiguriert Modell, Prompt, Warnungs- und Fortschrittsausgabe.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prompt_template</span> <span class="o">=</span> <span class="n">create_prompt_template</span><span class="p">(</span>
+            <span class="n">prompt_template</span><span class="p">,</span>
+            <span class="n">variables</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;target&quot;</span><span class="p">,</span> <span class="s2">&quot;assignment&quot;</span><span class="p">,</span> <span class="s2">&quot;reference_solution&quot;</span><span class="p">),</span>
+            <span class="n">prompt_label</span><span class="o">=</span><span class="s2">&quot;Rubric-Prompt&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="n">progress</span> <span class="ow">or</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">_message</span><span class="p">:</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">warn</span> <span class="o">=</span> <span class="n">warn</span> <span class="ow">or</span> <span class="p">(</span><span class="k">lambda</span> <span class="n">_message</span><span class="p">:</span> <span class="kc">None</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RubricGenerationPipeline.generate">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.rubrics.rubric_generation.RubricGenerationPipeline.generate">[Doku]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">assignment_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">reference_solution_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RubricGenerationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Erzeugt und speichert alle Rubrics für zwei ausgerichtete Dokumente.&quot;&quot;&quot;</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_rubric_inputs</span><span class="p">(</span>
+            <span class="n">assignment_dir</span><span class="o">=</span><span class="n">assignment_dir</span><span class="p">,</span>
+            <span class="n">reference_solution_dir</span><span class="o">=</span><span class="n">reference_solution_dir</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_rubric_run</span><span class="p">(</span>
+            <span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">RubricGenerationState</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">target</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">attempt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obtain_rubric</span><span class="p">(</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span>
+                <span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">,</span>
+                <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_record_rubric</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+                <span class="n">attempt</span><span class="o">=</span><span class="n">attempt</span><span class="p">,</span>
+                <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_finalize_rubric_run</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">,</span> <span class="n">state</span><span class="o">=</span><span class="n">state</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_rubric_inputs</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">assignment_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">reference_solution_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RubricGenerationInputs</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lädt beide Dokumente und ermittelt ihre ausgerichteten Blattziele.&quot;&quot;&quot;</span>
+        <span class="n">assignment</span> <span class="o">=</span> <span class="n">read_partitioned_document</span><span class="p">(</span>
+            <span class="n">assignment_dir</span><span class="p">,</span>
+            <span class="n">expected_type</span><span class="o">=</span><span class="s2">&quot;assignment&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">reference</span> <span class="o">=</span> <span class="n">read_partitioned_document</span><span class="p">(</span>
+            <span class="n">reference_solution_dir</span><span class="p">,</span>
+            <span class="n">expected_type</span><span class="o">=</span><span class="s2">&quot;reference_solution&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span><span class="s2">&quot;Pruefe parallele Aufgabenstruktur ...&quot;</span><span class="p">)</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="n">build_rubric_targets</span><span class="p">(</span>
+            <span class="n">assignment</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+            <span class="n">reference</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Strukturpruefung erfolgreich: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span><span class="si">}</span><span class="s2"> Rubric-Ziel(e).&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">RubricGenerationInputs</span><span class="p">(</span>
+            <span class="n">assignment</span><span class="o">=</span><span class="n">assignment</span><span class="p">,</span>
+            <span class="n">reference_solution</span><span class="o">=</span><span class="n">reference</span><span class="p">,</span>
+            <span class="n">targets</span><span class="o">=</span><span class="n">targets</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_rubric_run</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">inputs</span><span class="p">:</span> <span class="n">RubricGenerationInputs</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RubricGenerationRunSetup</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bereitet Pfade, Strukturprüfung, Cache-Identität und Cache-Einträge vor.&quot;&quot;&quot;</span>
+        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">output_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_paths</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+        <span class="n">cache_identity</span> <span class="o">=</span> <span class="n">model_identity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">json_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">cache_matches</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="n">overwrite</span>
+            <span class="ow">and</span> <span class="n">read_matching_cache</span><span class="p">(</span>
+                <span class="n">paths</span><span class="o">.</span><span class="n">cache</span><span class="p">,</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">cache_identity</span><span class="p">},</span>
+            <span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_output</span><span class="p">(</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">paths</span><span class="o">=</span><span class="n">paths</span><span class="p">,</span>
+            <span class="n">preserve_task_cache</span><span class="o">=</span><span class="n">cache_matches</span><span class="p">,</span>
+            <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">write_json</span><span class="p">(</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">structure</span><span class="p">,</span>
+            <span class="n">structure_check_payload</span><span class="p">(</span>
+                <span class="n">assignment_path</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">assignment</span><span class="o">.</span><span class="n">path</span><span class="p">,</span>
+                <span class="n">reference_path</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">reference_solution</span><span class="o">.</span><span class="n">path</span><span class="p">,</span>
+                <span class="n">targets</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">targets</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">write_cache_document</span><span class="p">(</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">cache</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">cache_identity</span><span class="p">},</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">RubricGenerationRunSetup</span><span class="p">(</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">paths</span><span class="o">=</span><span class="n">paths</span><span class="p">,</span>
+            <span class="n">cache_available</span><span class="o">=</span><span class="n">cache_matches</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_obtain_rubric</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">inputs</span><span class="p">:</span> <span class="n">RubricGenerationInputs</span><span class="p">,</span>
+        <span class="n">run</span><span class="p">:</span> <span class="n">RubricGenerationRunSetup</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">RubricTarget</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RubricTargetAttempt</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Laedt oder erzeugt den ersten Rubric-Versuch fuer ein Blattziel.&quot;&quot;&quot;</span>
+        <span class="n">model_input</span> <span class="o">=</span> <span class="n">render_model_input</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prompt_template</span><span class="p">,</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">target_input_payload</span><span class="p">(</span><span class="n">target</span><span class="p">),</span>
+            <span class="n">assignment</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">assignment</span><span class="o">.</span><span class="n">content</span><span class="p">,</span>
+            <span class="n">reference_solution</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">reference_solution</span><span class="o">.</span><span class="n">content</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">artifacts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_target_artifacts</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+            <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+            <span class="n">paths</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">rubric</span> <span class="o">=</span> <span class="n">load_cached_raw_result</span><span class="p">(</span>
+            <span class="n">cache_available</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">cache_available</span><span class="p">,</span>
+            <span class="n">input_path</span><span class="o">=</span><span class="n">artifacts</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
+            <span class="n">expected_input</span><span class="o">=</span><span class="n">model_input</span><span class="p">,</span>
+            <span class="n">raw_path</span><span class="o">=</span><span class="n">artifacts</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Rubric für </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">path_string</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">validator</span><span class="o">=</span><span class="k">lambda</span> <span class="n">data</span><span class="p">:</span> <span class="n">validate_rubric_structure</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">artifacts</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">model_input</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">from_cache</span> <span class="o">=</span> <span class="n">rubric</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">rubric</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">artifacts</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">artifacts</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Rubric </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span><span class="si">}</span><span class="s2"> erzeugen: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">display_label</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">rubric</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_rubric_attempt</span><span class="p">(</span>
+                <span class="n">prompt</span><span class="o">=</span><span class="n">model_input</span><span class="p">,</span>
+                <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+                <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">targets</span><span class="p">),</span>
+                <span class="n">artifacts</span><span class="o">=</span><span class="n">artifacts</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Rubric </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">targets</span><span class="p">)</span><span class="si">}</span><span class="s2"> aus Cache: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">display_label</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">RubricTargetAttempt</span><span class="p">(</span>
+            <span class="n">artifacts</span><span class="o">=</span><span class="n">artifacts</span><span class="p">,</span>
+            <span class="n">from_cache</span><span class="o">=</span><span class="n">from_cache</span><span class="p">,</span>
+            <span class="n">rubric</span><span class="o">=</span><span class="n">rubric</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_target_artifacts</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">RubricTarget</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">paths</span><span class="p">:</span> <span class="n">RubricGenerationPaths</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ModelCallArtifacts</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bestimmt die Artefakte des Ziels.&quot;&quot;&quot;</span>
+        <span class="n">stem</span> <span class="o">=</span> <span class="n">filename_stem</span><span class="p">(</span>
+            <span class="n">index</span><span class="p">,</span>
+            <span class="n">target</span><span class="o">.</span><span class="n">display_label</span><span class="p">,</span>
+            <span class="n">fallback</span><span class="o">=</span><span class="s2">&quot;rubric&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">model_call_artifacts</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span> <span class="n">paths</span><span class="o">.</span><span class="n">responses</span><span class="p">,</span> <span class="n">stem</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_rubric_attempt</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">RubricTarget</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">total</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">artifacts</span><span class="p">:</span> <span class="n">ModelCallArtifacts</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fuehrt einen Modellversuch aus und speichert Antwort sowie Statistik.&quot;&quot;&quot;</span>
+        <span class="n">response</span><span class="p">,</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">invoke_json_model</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+            <span class="n">prompt</span><span class="p">,</span>
+            <span class="n">progress</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">,</span>
+            <span class="n">heartbeat_label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Rubric-Erstellung </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> beim Modell&quot;</span><span class="p">,</span>
+            <span class="n">result_label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Rubric </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">write_json</span><span class="p">(</span><span class="n">artifacts</span><span class="o">.</span><span class="n">response</span><span class="p">,</span> <span class="n">response_artifact</span><span class="p">(</span><span class="n">response</span><span class="p">))</span>
+        <span class="n">rubric</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assess_rubric_response</span><span class="p">(</span><span class="n">response_text</span><span class="p">(</span><span class="n">response</span><span class="p">),</span> <span class="n">target</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rubric</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">write_json</span><span class="p">(</span><span class="n">artifacts</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span> <span class="n">rubric</span><span class="p">)</span>
+        <span class="n">write_model_call_statistics</span><span class="p">(</span>
+            <span class="n">artifacts</span><span class="o">.</span><span class="n">statistics</span><span class="p">,</span>
+            <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+            <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+            <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;rubric_generation&quot;</span><span class="p">,</span>
+            <span class="n">unit</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="n">index</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">target</span><span class="o">.</span><span class="n">display_label</span><span class="p">},</span>
+            <span class="n">model_input</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+            <span class="n">started_at</span><span class="o">=</span><span class="n">started_at</span><span class="p">,</span>
+            <span class="n">warn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">warn</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">rubric</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_assess_rubric_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">RubricTarget</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Meldet eine unbrauchbare Rubric direkt; der Lauf verarbeitet weitere Ziele.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">parse_model_json_object</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">response_label</span><span class="o">=</span><span class="s2">&quot;Rubric-Antwort&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">validate_rubric_structure</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;FEHLER: Rubric </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">path_string</span><span class="si">}</span><span class="s2"> wird uebersprungen: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_record_rubric</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">RubricTarget</span><span class="p">,</span>
+        <span class="n">attempt</span><span class="p">:</span> <span class="n">RubricTargetAttempt</span><span class="p">,</span>
+        <span class="n">state</span><span class="p">:</span> <span class="n">RubricGenerationState</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Übernimmt ein brauchbares Rubric und merkt seinen Cache-Status.&quot;&quot;&quot;</span>
+        <span class="n">state</span><span class="o">.</span><span class="n">cache_hits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">attempt</span><span class="o">.</span><span class="n">from_cache</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">attempt</span><span class="o">.</span><span class="n">rubric</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">failed_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">return</span>
+        <span class="n">state</span><span class="o">.</span><span class="n">rubrics</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">combine_target_and_rubric</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">attempt</span><span class="o">.</span><span class="n">rubric</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_finalize_rubric_run</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">inputs</span><span class="p">:</span> <span class="n">RubricGenerationInputs</span><span class="p">,</span>
+        <span class="n">run</span><span class="p">:</span> <span class="n">RubricGenerationRunSetup</span><span class="p">,</span>
+        <span class="n">state</span><span class="p">:</span> <span class="n">RubricGenerationState</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RubricGenerationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Führt Einzelrubrics zusammen und schreibt JSON sowie Markdown.&quot;&quot;&quot;</span>
+        <span class="n">failed_rubric_count</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">failed_count</span>
+        <span class="n">combined_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;incomplete&quot;</span> <span class="k">if</span> <span class="n">failed_rubric_count</span> <span class="k">else</span> <span class="s2">&quot;complete&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;failed_rubric_count&quot;</span><span class="p">:</span> <span class="n">failed_rubric_count</span><span class="p">,</span>
+            <span class="s2">&quot;assignment_document_title&quot;</span><span class="p">:</span> <span class="n">inputs</span><span class="o">.</span><span class="n">assignment</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;document_title&quot;</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;reference_solution_document_title&quot;</span><span class="p">:</span> <span class="n">inputs</span><span class="o">.</span><span class="n">reference_solution</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;document_title&quot;</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;rubrics&quot;</span><span class="p">:</span> <span class="n">state</span><span class="o">.</span><span class="n">rubrics</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">write_json</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">rubrics</span><span class="p">,</span> <span class="n">combined_data</span><span class="p">)</span>
+        <span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">export</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
+            <span class="n">render_rubrics_markdown</span><span class="p">(</span><span class="n">combined_data</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rubric-Export gespeichert: </span><span class="si">{</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">export</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">RubricGenerationResult</span><span class="p">(</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">structure_check_path</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">structure</span><span class="p">,</span>
+            <span class="n">rubrics_json_path</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">rubrics</span><span class="p">,</span>
+            <span class="n">rubrics_markdown_path</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">export</span><span class="p">,</span>
+            <span class="n">rubric_count</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">rubrics</span><span class="p">),</span>
+            <span class="n">failed_rubric_count</span><span class="o">=</span><span class="n">failed_rubric_count</span><span class="p">,</span>
+            <span class="n">from_cache</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">cache_hits</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">cache_hits</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RubricGenerationPaths</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Leitet alle Ausgabepfade aus dem Wurzelordner ab.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">RubricGenerationPaths</span><span class="p">(</span>
+            <span class="n">inputs</span><span class="o">=</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">RUBRIC_ARTIFACTS</span><span class="o">.</span><span class="n">inputs_dir</span><span class="p">,</span>
+            <span class="n">responses</span><span class="o">=</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">RUBRIC_ARTIFACTS</span><span class="o">.</span><span class="n">responses_dir</span><span class="p">,</span>
+            <span class="n">structure</span><span class="o">=</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">RUBRIC_ARTIFACTS</span><span class="o">.</span><span class="n">structure_check</span><span class="p">,</span>
+            <span class="n">rubrics</span><span class="o">=</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">RUBRIC_ARTIFACTS</span><span class="o">.</span><span class="n">raw_json</span><span class="p">,</span>
+            <span class="n">reviewed_rubrics</span><span class="o">=</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">RUBRIC_ARTIFACTS</span><span class="o">.</span><span class="n">reviewed_json</span><span class="p">,</span>
+            <span class="n">cache</span><span class="o">=</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">RUBRIC_ARTIFACTS</span><span class="o">.</span><span class="n">cache_json</span><span class="p">,</span>
+            <span class="n">export</span><span class="o">=</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">RUBRIC_ARTIFACTS</span><span class="o">.</span><span class="n">export_markdown</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_output</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">paths</span><span class="p">:</span> <span class="n">RubricGenerationPaths</span><span class="p">,</span>
+        <span class="n">preserve_task_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bereinigt veraltete Ausgaben und legt benoetigte Ordner an.&quot;&quot;&quot;</span>
+        <span class="n">prepare_model_output</span><span class="p">(</span>
+            <span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">working_dirs</span><span class="o">=</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span> <span class="n">paths</span><span class="o">.</span><span class="n">responses</span><span class="p">),</span>
+            <span class="n">result_files</span><span class="o">=</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">structure</span><span class="p">,</span> <span class="n">paths</span><span class="o">.</span><span class="n">rubrics</span><span class="p">,</span> <span class="n">paths</span><span class="o">.</span><span class="n">export</span><span class="p">),</span>
+            <span class="n">cache_file</span><span class="o">=</span><span class="n">paths</span><span class="o">.</span><span class="n">cache</span><span class="p">,</span>
+            <span class="n">preserve_cache</span><span class="o">=</span><span class="n">preserve_task_cache</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">overwrite</span><span class="p">:</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">reviewed_rubrics</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="render_model_input">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.rubrics.rubric_generation.render_model_input">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render_model_input</span><span class="p">(</span>
+    <span class="n">prompt_template</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">PromptTemplate</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">assignment</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">reference_solution</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rendert einen Rubric-Prompt mit einer LangChain-Promptvorlage.&quot;&quot;&quot;</span>
+    <span class="n">template</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">prompt_template</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">prompt_template</span><span class="p">,</span> <span class="n">PromptTemplate</span><span class="p">)</span>
+        <span class="k">else</span> <span class="n">create_prompt_template</span><span class="p">(</span>
+            <span class="n">prompt_template</span><span class="p">,</span>
+            <span class="n">variables</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;target&quot;</span><span class="p">,</span> <span class="s2">&quot;assignment&quot;</span><span class="p">,</span> <span class="s2">&quot;reference_solution&quot;</span><span class="p">),</span>
+            <span class="n">prompt_label</span><span class="o">=</span><span class="s2">&quot;Rubric-Prompt&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">target</span><span class="o">=</span><span class="n">target</span><span class="p">,</span>
+        <span class="n">assignment</span><span class="o">=</span><span class="n">assignment</span><span class="p">,</span>
+        <span class="n">reference_solution</span><span class="o">=</span><span class="n">reference_solution</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.cli &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../genindex.html" />
+    <link rel="search" title="Suche" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.cli</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Führt die über :mod:`grading_pipeline.cli_parser` definierten CLI-Befehle aus.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.cli_parser</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_parser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.extraction</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">TaskExtractionPipeline</span><span class="p">,</span>
+    <span class="n">TaskPartitioningPipeline</span><span class="p">,</span>
+    <span class="n">VisualExtractionPipeline</span><span class="p">,</span>
+    <span class="n">prepare_document_image_supplements</span><span class="p">,</span>
+    <span class="n">resolve_task_prompt_template</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.grading</span><span class="w"> </span><span class="kn">import</span> <span class="n">GradingPipeline</span><span class="p">,</span> <span class="n">MonolithicGradingPipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.models.factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatModelConfig</span><span class="p">,</span> <span class="n">create_chat_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.rubrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">RubricGenerationPipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_artifact_directory</span>
+
+
+<span class="n">ProgressCallback</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli.main">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">argv</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parst die Kommandozeile, führt einen Unterbefehl aus und meldet Fehler.&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">build_parser</span><span class="p">()</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">argv</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gibt eine sofort sichtbare Fortschrittsmeldung mit Programmpräfix aus.&quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[GradingPipeline] </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;validate&quot;</span><span class="p">:</span>
+            <span class="n">_run_validation</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;prepare-images&quot;</span><span class="p">:</span>
+            <span class="n">_run_prepare_images</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">prompt</span> <span class="o">=</span> <span class="n">read_required_prompt</span><span class="p">(</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">prompt_file</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Promptdatei&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;extract&quot;</span><span class="p">:</span>
+            <span class="n">_run_visual_extraction</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;extract-tasks&quot;</span><span class="p">:</span>
+            <span class="n">_run_task_extraction</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;partition-tasks&quot;</span><span class="p">:</span>
+            <span class="n">_run_task_partitioning</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;create-rubrics&quot;</span><span class="p">:</span>
+            <span class="n">_run_rubric_generation</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;grade&quot;</span><span class="p">,</span> <span class="s2">&quot;grade-with-images&quot;</span><span class="p">}:</span>
+            <span class="n">_run_grading</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;grade-monolithic&quot;</span><span class="p">:</span>
+            <span class="n">_run_monolithic_grading</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unbekannter Befehl: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">command</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[GradingPipeline] FEHLER: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_chat_model</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erzeugt das LangChain-Chatmodell einer einzelnen CLI-Stufe.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">create_chat_model</span><span class="p">(</span><span class="n">ChatModelConfig</span><span class="p">(</span>
+        <span class="n">provider</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">provider</span><span class="p">,</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+        <span class="n">ollama_base_url</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ollama_base_url</span><span class="p">,</span>
+        <span class="n">ollama_num_ctx</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ollama_num_ctx</span><span class="p">,</span>
+        <span class="n">openai_base_url</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">openai_base_url</span><span class="p">,</span>
+        <span class="n">openai_api_key_env</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">openai_api_key_env</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">timeout</span><span class="p">,</span>
+        <span class="n">temperature</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span>
+    <span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_validation</span><span class="p">(</span>
+    <span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span>
+    <span class="n">report</span><span class="p">:</span> <span class="n">ProgressCallback</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft einen Artefakt-Ordner ohne Modellaufruf oder Datenänderung.&quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">validate_artifact_directory</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">required_issues</span><span class="p">:</span>
+        <span class="n">location</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot; | </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">issue</span><span class="o">.</span><span class="n">location</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ERFORDERLICH: </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">artifact</span><span class="si">}{</span><span class="n">location</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">quality_issues</span><span class="p">:</span>
+        <span class="n">location</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot; | </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">issue</span><span class="o">.</span><span class="n">location</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;HINWEIS: </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">artifact</span><span class="si">}{</span><span class="n">location</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">issue</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">checked_artifacts</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">(</span><span class="s2">&quot;Geprüfte Artefakte: &quot;</span> <span class="o">+</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">checked_artifacts</span><span class="p">))</span>
+    <span class="n">report</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Validierung: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s2"> | &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">required_issues</span><span class="p">)</span><span class="si">}</span><span class="s2"> erforderlich | &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">quality_issues</span><span class="p">)</span><span class="si">}</span><span class="s2"> Qualitätshinweis(e)&quot;</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">required_issues</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_visual_extraction</span><span class="p">(</span>
+    <span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">report</span><span class="p">:</span> <span class="n">ProgressCallback</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Konfiguriert und startet die visuelle Extraktion.&quot;&quot;&quot;</span>
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">VisualExtractionPipeline</span><span class="p">(</span>
+        <span class="n">_chat_model</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+        <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+        <span class="n">dpi</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">dpi</span><span class="p">,</span>
+        <span class="n">document_type</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">document_type</span><span class="p">,</span>
+        <span class="n">progress</span><span class="o">=</span><span class="n">report</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+        <span class="n">source</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+        <span class="n">use_cache</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extrahierte Seiten: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">page_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Roh-Markdown: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">markdown_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dokument-JSON: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">document_json_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_prepare_images</span><span class="p">(</span>
+    <span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span>
+    <span class="n">report</span><span class="p">:</span> <span class="n">ProgressCallback</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Erzeugt Bildsupplemente ohne einen Modellaufruf.&quot;&quot;&quot;</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">prepare_document_image_supplements</span><span class="p">(</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
+        <span class="n">document_type</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">document_type</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bildsupplemente: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">image_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">manifest_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Manifest: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">manifest_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_task_extraction</span><span class="p">(</span>
+    <span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">report</span><span class="p">:</span> <span class="n">ProgressCallback</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Konfiguriert und startet die Extraktion vollständiger Aufgaben.&quot;&quot;&quot;</span>
+    <span class="n">resolved_prompt</span> <span class="o">=</span> <span class="n">resolve_task_prompt_template</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">document_type</span><span class="p">)</span>
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">TaskExtractionPipeline</span><span class="p">(</span>
+        <span class="n">_chat_model</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+        <span class="n">prompt_template</span><span class="o">=</span><span class="n">resolved_prompt</span><span class="p">,</span>
+        <span class="n">document_type</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">document_type</span><span class="p">,</span>
+        <span class="n">progress</span><span class="o">=</span><span class="n">report</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">warn</span><span class="o">=</span><span class="n">report</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+        <span class="n">document_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+        <span class="n">use_cache</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extrahierte Aufgaben: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">task_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Aufgaben-Markdown: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">combined_markdown_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Aufgaben-JSON: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">extraction_json_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_task_partitioning</span><span class="p">(</span>
+    <span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">report</span><span class="p">:</span> <span class="n">ProgressCallback</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Konfiguriert und startet die Partitionierung in Unteraufgaben.&quot;&quot;&quot;</span>
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">TaskPartitioningPipeline</span><span class="p">(</span>
+        <span class="n">_chat_model</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+        <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+        <span class="n">progress</span><span class="o">=</span><span class="n">report</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">warn</span><span class="o">=</span><span class="n">report</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+        <span class="n">document_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+        <span class="n">use_cache</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Partitionierte Aufgaben: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">task_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Partitioniertes Markdown: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">combined_markdown_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Partitionierungs-JSON: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">extraction_json_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_rubric_generation</span><span class="p">(</span>
+    <span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">report</span><span class="p">:</span> <span class="n">ProgressCallback</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Konfiguriert und startet die Rubric-Erzeugung.&quot;&quot;&quot;</span>
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">RubricGenerationPipeline</span><span class="p">(</span>
+        <span class="n">_chat_model</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+        <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+        <span class="n">progress</span><span class="o">=</span><span class="n">report</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">warn</span><span class="o">=</span><span class="n">report</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span>
+        <span class="n">assignment_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">assignment_dir</span><span class="p">,</span>
+        <span class="n">reference_solution_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">reference_solution_dir</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;CACHE&quot;</span> <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">from_cache</span> <span class="k">else</span> <span class="s2">&quot;NEU&quot;</span>
+    <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rubrics: </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">rubric_count</span><span class="si">}</span><span class="s2"> Ziel(e)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Strukturprüfung: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">structure_check_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rubric-JSON: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">rubrics_json_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rubric-Markdown: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">rubrics_markdown_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_grading</span><span class="p">(</span>
+    <span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">report</span><span class="p">:</span> <span class="n">ProgressCallback</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Konfiguriert und startet die Bewertung einer studentischen Lösung.&quot;&quot;&quot;</span>
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">GradingPipeline</span><span class="p">(</span>
+        <span class="n">_chat_model</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+        <span class="n">prompt_template</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+        <span class="n">with_images</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">command</span> <span class="o">==</span> <span class="s2">&quot;grade-with-images&quot;</span><span class="p">,</span>
+        <span class="n">progress</span><span class="o">=</span><span class="n">report</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">warn</span><span class="o">=</span><span class="n">report</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">grade</span><span class="p">(</span>
+        <span class="n">assignment_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">assignment_dir</span><span class="p">,</span>
+        <span class="n">student_solution_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">student_solution_dir</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">reference_solution_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">reference_solution_dir</span><span class="p">,</span>
+        <span class="n">rubrics_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">rubrics_dir</span><span class="p">,</span>
+        <span class="n">context_files</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">context</span><span class="p">,</span>
+        <span class="n">context_map</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">context_map</span><span class="p">,</span>
+        <span class="n">skip_targets</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">skip_target</span><span class="p">,</span>
+        <span class="n">student_id</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">student_id</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;CACHE&quot;</span> <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">from_cache</span> <span class="k">else</span> <span class="s2">&quot;NEU&quot;</span>
+    <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bewertungen: </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">graded_task_count</span><span class="si">}</span><span class="s2"> Blattaufgabe(n)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">failed_task_count</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;WARNUNG: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">failed_task_count</span><span class="si">}</span><span class="s2"> Blattaufgabe(n) konnten nicht &quot;</span>
+            <span class="s2">&quot;formal gültig bewertet werden.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Strukturprüfung: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">structure_check_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ergebnis-JSON: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">results_json_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bewertungsbericht: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">report_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Studierendenfeedback: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">feedback_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_monolithic_grading</span><span class="p">(</span>
+    <span class="n">args</span><span class="p">:</span> <span class="n">argparse</span><span class="o">.</span><span class="n">Namespace</span><span class="p">,</span>
+    <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">report</span><span class="p">:</span> <span class="n">ProgressCallback</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Konfiguriert den freien multimodalen Gesamtbewertungslauf.&quot;&quot;&quot;</span>
+
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">MonolithicGradingPipeline</span><span class="p">(</span>
+        <span class="n">_chat_model</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+        <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+        <span class="n">dpi</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">dpi</span><span class="p">,</span>
+        <span class="n">progress</span><span class="o">=</span><span class="n">report</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">grade</span><span class="p">(</span>
+        <span class="n">input_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;CACHE&quot;</span> <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">from_cache</span> <span class="k">else</span> <span class="s2">&quot;NEU&quot;</span>
+    <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Monolithische Bewertung: </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">page_count</span><span class="si">}</span><span class="s2"> Seite(n)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Freie Modellantwort: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">raw_text_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Providerantwort: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">response_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="read_required_prompt">
+<a class="viewcode-back" href="../../api/developer/cli.html#grading_pipeline.cli.read_required_prompt">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_required_prompt</span><span class="p">(</span>
+    <span class="n">supplied_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Liest einen nicht leeren UTF-8-Prompt und liefert seinen absoluten Pfad.&quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">supplied_path</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> nicht gefunden: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">UnicodeDecodeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> ist nicht UTF-8-kodiert: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">content</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> ist leer: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">path</span><span class="p">,</span> <span class="n">content</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

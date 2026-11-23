@@ -1,0 +1,76 @@
+Du erhaeltst genau eine bereits vollstaendig extrahierte Hauptaufgabe in einem
+gerahmten Textformat. Sie steht zwischen `<<< EINHEIT BEGINN >>>` und
+`<<< EINHEIT ENDE >>>`. `DOKUMENTTYP_JSON`, `ID_JSON`, `SOURCE_LABEL_JSON`,
+`TITEL_JSON` und `PUNKTE_JSON` enthalten ihre verbindlichen Metadaten. Zwischen
+`MARKDOWN_BEGINN` und `MARKDOWN_ENDE` steht der vollstaendige Inhalt mit echten
+Zeilenumbruechen. Eine redundante Markdown-Ueberschrift wurde dort bereits
+entfernt; verwende ausschliesslich die Metadatenfelder.
+
+Zerlege die Hauptaufgabe semantisch in gemeinsamen Inhalt und rekursiv verschachtelte
+Teilaufgaben beziehungsweise Teilloesungen. Bestimme die Zuordnung anhand von
+Inhalt und Struktur, nicht anhand bestimmter Nummerierungs- oder
+Bezeichnungsmuster.
+
+Gib genau diese eine Hauptaufgabe genau einmal aus. Fuehre keine erneute
+Dokumentextraktion oder Auswahl von Hauptaufgaben durch.
+
+Regeln:
+
+- Loese, beantworte, vervollstaendige, verbessere oder bewerte keine Inhalte.
+- Erfinde, ergaenze, kuerze, korrigiere oder formuliere keine Inhalte um.
+- Erhalte alle Bedingungen, Definitionen, Formeln, Matrizen, Tabellen, Abbildungsverweise und aufgabenspezifischen Hinweise.
+- Uebernimm `DOKUMENTTYP_JSON`, `ID_JSON`, `SOURCE_LABEL_JSON`, `TITEL_JSON` und `PUNKTE_JSON` exakt und unveraendert.
+- Bei `assignment` uebernimm eine sichtbar einer Unteraufgabe zugeordnete Punktzahl als Zahl in deren `points` und entferne sie aus dem Markdown. Berechne oder summiere keine Punktzahl.
+- Bei `reference_solution` und `student_solution` setze alle `points` auf `null` und erhalte Punkteangaben unveraendert im Markdown.
+- Erhalte vorhandenes Markdown, LaTeX und Rohtextplatzhalter unveraendert.
+- `introduction_markdown` enthaelt den gemeinsamen Inhalt vor der ersten Unteraufgabe. Deren Inhalt darf dort nicht enthalten sein.
+- `closing_markdown` enthaelt nur Inhalt nach der letzten Unteraufgabe, der erkennbar fuer die gesamte Hauptaufgabe gilt. Inhalt der letzten Unteraufgabe bleibt in deren `markdown`.
+- Das Feld `markdown` einer Unteraufgabe enthaelt ihren eigenen Inhalt sowie den Inhalt, der gemeinsam fuer ihre Kinder gilt. Inhalte einzelner Kinder duerfen darin nicht wiederholt werden.
+- Jeder Arbeits- oder Loesungsschritt muss vollstaendig im `markdown` des zugehoerigen Knotens stehen. Das Feld `title` darf ihn nicht ersetzen.
+- Verschachtelte Unteraufgaben werden rekursiv im Feld `subtasks` abgebildet.
+- Erzeuge eine Unteraufgabe nur, wenn sie im Ausgangstext als eigener Arbeits- oder Loesungsschritt erkennbar ist.
+- Erzeuge keine Unteraufgaben allein aufgrund einer Aufzaehlung von Werten, Begriffen, Bedingungen oder Ergebnissen.
+- Uebernimm sichtbare Bezeichnungen wortgetreu als `id`. Ist keine vorhanden, verwende innerhalb des Elternknotens `subtask_001`, `subtask_002` usw.
+- Wiederhole die im Feld `id` gespeicherte Bezeichnung nicht am Anfang des zugehoerigen Markdown-Inhalts.
+- Uebernimm einen sichtbaren Titel wortgetreu. Ist keiner vorhanden, setze `title` auf `null`.
+- Hat eine Hauptaufgabe keine erkennbaren Unteraufgaben, steht ihr vollstaendiger Inhalt in `introduction_markdown`; `subtasks` und `closing_markdown` sind leer.
+- Jeder Satz, jede Formel und jede Punkteangabe darf nur in demjenigen Knoten stehen, fuer dessen Inhalt sie gilt.
+- Kodiere Zeilenumbrueche innerhalb von JSON-Strings als `\n`. Erzeuge keine doppelt maskierten Zeilenumbrueche als `\\n`.
+- Gib ausschliesslich ein einzelnes gueltiges JSON-Objekt aus.
+
+Pruefe vor der Ausgabe:
+
+- Kein Inhalt kommt gleichzeitig in einem Eltern- und einem Kindknoten vor.
+- Kein Arbeits- oder Loesungsschritt, gemeinsamer Kontext und keine Formel ist verloren gegangen.
+- Die Verkettung aller Felder bildet die vollstaendige Hauptaufgabe ohne inhaltliche Veraenderung ab.
+
+Ausgabeformat:
+
+{
+  "document_title": "wortgetreuer Dokumenttitel oder null",
+  "document_type": "assignment, reference_solution oder student_solution",
+  "tasks": [
+    {
+      "id": "Aufgabenkennzeichnung",
+      "source_label": "sichtbare Aufgaben- oder Loesungskennzeichnung oder null",
+      "title": "wortgetreuer Titel oder null",
+      "points": 15,
+      "introduction_markdown": "gemeinsamer Inhalt der Hauptaufgabe",
+      "subtasks": [
+        {
+          "id": "Bezeichnung oder technische ID",
+          "title": "wortgetreuer Titel oder null",
+          "points": 10,
+          "markdown": "direkter Inhalt dieser Unteraufgabe",
+          "subtasks": []
+        }
+      ],
+      "closing_markdown": "gemeinsamer abschliessender Inhalt oder leerer String"
+    }
+  ]
+}
+
+Das Array `tasks` muss genau einen Eintrag enthalten.
+
+GERAHMTE VOLLSTAENDIGE EINHEIT:
+{{ content }}

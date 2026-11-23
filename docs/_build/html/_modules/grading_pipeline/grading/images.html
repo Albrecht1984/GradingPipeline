@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.grading.images &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../../genindex.html" />
+    <link rel="search" title="Suche" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.grading.images</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Lädt manuell referenzierte Bildsupplemente für das Vision-Grading.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.extraction.image_supplements</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">IMAGE_REFERENCE_FIELD</span><span class="p">,</span>
+    <span class="n">SUPPLEMENTS_DIRNAME</span><span class="p">,</span>
+    <span class="n">SUPPLEMENTS_MANIFEST_FILENAME</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.hashing</span><span class="w"> </span><span class="kn">import</span> <span class="n">sha256_file</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.json_io</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">read_cache_json_object</span><span class="p">,</span>
+    <span class="n">read_required_json_object</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="n">IMAGE_GROUP_ORDER</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;assignment&quot;</span><span class="p">,</span> <span class="s2">&quot;reference_solution&quot;</span><span class="p">,</span> <span class="s2">&quot;student_solution&quot;</span><span class="p">)</span>
+<span class="n">IMAGE_GROUP_LABELS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;assignment&quot;</span><span class="p">:</span> <span class="s2">&quot;AUFGABENSTELLUNG&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;reference_solution&quot;</span><span class="p">:</span> <span class="s2">&quot;MUSTERLOESUNG&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;student_solution&quot;</span><span class="p">:</span> <span class="s2">&quot;STUDENTISCHE_LOESUNG&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="GradingImage">
+<a class="viewcode-back" href="../../../api/developer/grading_support.html#grading_pipeline.grading.images.GradingImage">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GradingImage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Beschreibt ein geprüftes Bild und seine Rolle im Bewertungsmaterial.&quot;&quot;&quot;</span>
+
+    <span class="n">image_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">source_role</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">sha256</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="GradingImageGroup">
+<a class="viewcode-back" href="../../../api/developer/grading_support.html#grading_pipeline.grading.images.GradingImageGroup">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GradingImageGroup</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bündelt alle Bilder genau einer Quelle in fester Request-Reihenfolge.&quot;&quot;&quot;</span>
+
+    <span class="n">source_role</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">images</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">GradingImage</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">label</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Liefert die sichtbare Quellenbezeichnung der Bildgruppe.&quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">IMAGE_GROUP_LABELS</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">source_role</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="stored_image_groups_match">
+<a class="viewcode-back" href="../../../api/developer/grading_support.html#grading_pipeline.grading.images.stored_image_groups_match">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">stored_image_groups_match</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">expected</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Vergleicht die gespeicherten Bildgruppen einschließlich ihrer Reihenfolge.&quot;&quot;&quot;</span>
+
+    <span class="n">stored</span> <span class="o">=</span> <span class="n">read_cache_json_object</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">stored</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">stored</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;groups&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span><span class="p">[</span><span class="s2">&quot;groups&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="collect_grading_image_groups">
+<a class="viewcode-back" href="../../../api/developer/grading_support.html#grading_pipeline.grading.images.collect_grading_image_groups">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">collect_grading_image_groups</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">assignment</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">assignment_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">student_solution</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">student_solution_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">reference_solution</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">reference_solution_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">task_path</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">GradingImageGroup</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Löst referenzierte Bilder als explizite, fest geordnete Quellgruppen auf.&quot;&quot;&quot;</span>
+
+    <span class="n">sources</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;assignment&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">assignment</span><span class="p">,</span> <span class="n">assignment_dir</span><span class="p">),</span>
+        <span class="s2">&quot;student_solution&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">student_solution</span><span class="p">,</span> <span class="n">student_solution_dir</span><span class="p">),</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">reference_solution</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">reference_solution_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sources</span><span class="p">[</span><span class="s2">&quot;reference_solution&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">reference_solution</span><span class="p">,</span> <span class="n">reference_solution_dir</span><span class="p">)</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">GradingImageGroup</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">source_role</span> <span class="ow">in</span> <span class="n">IMAGE_GROUP_ORDER</span><span class="p">:</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">sources</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">source_role</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">document</span><span class="p">,</span> <span class="n">document_dir</span> <span class="o">=</span> <span class="n">source</span>
+        <span class="n">refs</span> <span class="o">=</span> <span class="n">_refs_for_path</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">task_path</span><span class="p">,</span> <span class="n">source_role</span><span class="o">=</span><span class="n">source_role</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">refs</span><span class="p">:</span>
+            <span class="n">groups</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">GradingImageGroup</span><span class="p">(</span>
+                    <span class="n">source_role</span><span class="o">=</span><span class="n">source_role</span><span class="p">,</span>
+                    <span class="n">images</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span>
+                        <span class="n">_resolve_references</span><span class="p">(</span>
+                            <span class="n">refs</span><span class="p">,</span>
+                            <span class="n">document_dir</span><span class="o">=</span><span class="n">document_dir</span><span class="p">,</span>
+                            <span class="n">source_role</span><span class="o">=</span><span class="n">source_role</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">groups</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_refs_for_path</span><span class="p">(</span>
+    <span class="n">document</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">task_path</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">source_role</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sammelt Referenzen des Blattes und seiner Vorfahren ohne globale Prüfungen.&quot;&quot;&quot;</span>
+
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tasks&quot;</span><span class="p">)</span>
+    <span class="n">collected</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">depth</span><span class="p">,</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">task_path</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="n">index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Bildsupplemente: ungueltiger Aufgabenpfad in </span><span class="si">{</span><span class="n">source_role</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">task_path</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Bildsupplemente: Aufgabenknoten in </span><span class="si">{</span><span class="n">source_role</span><span class="si">}</span><span class="s2"> ist kein Objekt.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">IMAGE_REFERENCE_FIELD</span> <span class="ow">in</span> <span class="n">node</span><span class="p">:</span>
+            <span class="n">refs</span> <span class="o">=</span> <span class="n">node</span><span class="p">[</span><span class="n">IMAGE_REFERENCE_FIELD</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">refs</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+                <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ref</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="n">refs</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">source_role</span><span class="si">}</span><span class="s2">, Ebene </span><span class="si">{</span><span class="n">depth</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">IMAGE_REFERENCE_FIELD</span><span class="si">}</span><span class="s2"> muss &quot;</span>
+                    <span class="s2">&quot;eine Liste nichtleerer Bild-IDs sein.&quot;</span>
+                <span class="p">)</span>
+            <span class="n">collected</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="n">refs</span><span class="p">)</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;subtasks&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">collected</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_references</span><span class="p">(</span>
+    <span class="n">refs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">source_role</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">GradingImage</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prüft ausschließlich angeforderte IDs gegen das lokale Manifest.&quot;&quot;&quot;</span>
+
+    <span class="n">supplements_dir</span> <span class="o">=</span> <span class="p">(</span><span class="n">document_dir</span> <span class="o">/</span> <span class="n">SUPPLEMENTS_DIRNAME</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="n">manifest_path</span> <span class="o">=</span> <span class="n">supplements_dir</span> <span class="o">/</span> <span class="n">SUPPLEMENTS_MANIFEST_FILENAME</span>
+    <span class="n">manifest</span> <span class="o">=</span> <span class="n">read_required_json_object</span><span class="p">(</span>
+        <span class="n">manifest_path</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Bildsupplement-Manifest (</span><span class="si">{</span><span class="n">source_role</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">raw_images</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;images&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_images</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bildsupplement-Manifest enthaelt keine images-Liste: </span><span class="si">{</span><span class="n">manifest_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">by_id</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">):</span> <span class="n">item</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">raw_images</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">),</span> <span class="nb">str</span><span class="p">)</span>
+    <span class="p">}</span>
+    <span class="n">result</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">GradingImage</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">image_id</span> <span class="ow">in</span> <span class="n">refs</span><span class="p">:</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">by_id</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">image_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">item</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Referenziertes Bildsupplement </span><span class="si">{</span><span class="n">image_id</span><span class="si">!r}</span><span class="s2"> fehlt im Manifest: </span><span class="si">{</span><span class="n">manifest_path</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">relative_path</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">)</span>
+        <span class="n">expected_hash</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sha256&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">relative_path</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected_hash</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bildsupplement </span><span class="si">{</span><span class="n">image_id</span><span class="si">!r}</span><span class="s2"> hat unvollstaendige Metadaten.&quot;</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="p">(</span><span class="n">document_dir</span> <span class="o">/</span> <span class="n">relative_path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="o">==</span> <span class="n">supplements_dir</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_relative_to</span><span class="p">(</span><span class="n">supplements_dir</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Bildsupplement </span><span class="si">{</span><span class="n">image_id</span><span class="si">!r}</span><span class="s2"> liegt ausserhalb von </span><span class="si">{</span><span class="n">SUPPLEMENTS_DIRNAME</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Referenziertes Bildsupplement fehlt: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">actual_hash</span> <span class="o">=</span> <span class="n">sha256_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">actual_hash</span> <span class="o">!=</span> <span class="n">expected_hash</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pruefsumme des Bildsupplements stimmt nicht: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">GradingImage</span><span class="p">(</span>
+                <span class="n">image_id</span><span class="o">=</span><span class="n">image_id</span><span class="p">,</span>
+                <span class="n">source_role</span><span class="o">=</span><span class="n">source_role</span><span class="p">,</span>
+                <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+                <span class="n">sha256</span><span class="o">=</span><span class="n">actual_hash</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

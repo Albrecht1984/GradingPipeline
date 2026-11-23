@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>grading_pipeline.extraction.task_partitioning &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../../genindex.html" />
+    <link rel="search" title="Suche" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Quellcode für grading_pipeline.extraction.task_partitioning</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Überführt extrahierte Aufgaben in hierarchisch partitionierte Hauptaufgaben.</span>
+
+<span class="sd">Die Quelle ist das JSON der vorherigen Aufgabenextraktion im Dokumentordner.</span>
+<span class="sd">Jede darin enthaltene Hauptaufgabe erhält einen eigenen Modellinput; das Modell</span>
+<span class="sd">liefert den vollständigen Unteraufgabenbaum dieser Hauptaufgabe zurück. Die Pipeline</span>
+<span class="sd">ruft das Modell also nicht erneut für jeden Knoten dieses Baums auf.</span>
+
+<span class="sd">``extract()`` steuert Vorbereitung, Hauptaufgabenverarbeitung und Gesamtexport.</span>
+<span class="sd">Pro Hauptaufgabe folgen Cache-Prüfung oder ein Modellaufruf,</span>
+<span class="sd">abschließende Validierung und Speicherung. Die Dataclasses halten dafür</span>
+<span class="sd">Pfade und Laufdaten auseinander. Die freien Funktionen am</span>
+<span class="sd">Modulende parsen die Quelle, rendern Modellinput beziehungsweise Markdown</span>
+<span class="sd">und erzeugen eine konfigurierte Pipeline.</span>
+
+<span class="sd">Erfolgreiche Hauptaufgaben werden sofort im Cache vermerkt. Ein struktureller</span>
+<span class="sd">Fehler bricht dennoch den gesamten Lauf ab; Gesamtausgaben werden erst nach</span>
+<span class="sd">erfolgreicher Verarbeitung aller Hauptaufgaben geschrieben.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.artifact_names</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">TASK_EXTRACTION_ARTIFACTS</span><span class="p">,</span>
+    <span class="n">TASK_PARTITIONING_ARTIFACTS</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.model_calls</span><span class="w"> </span><span class="kn">import</span> <span class="n">invoke_json_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.models.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">model_identity</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.models.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">response_artifact</span><span class="p">,</span> <span class="n">response_text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.models.json</span><span class="w"> </span><span class="kn">import</span> <span class="n">parse_model_json_object</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.hashing</span><span class="w"> </span><span class="kn">import</span> <span class="n">sha256_text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.json_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_cache_json_object</span><span class="p">,</span> <span class="n">write_json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.task_nodes</span><span class="w"> </span><span class="kn">import</span> <span class="n">child_nodes</span><span class="p">,</span> <span class="n">node_label</span><span class="p">,</span> <span class="n">node_text</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.caching.task_partitioning</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">load_partitioned_task</span><span class="p">,</span>
+    <span class="n">partition_cache_records</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.caching.common</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_cache_document</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">render_heading</span><span class="p">,</span>
+    <span class="n">task_filename</span><span class="p">,</span>
+    <span class="n">write_task_markdown_artifacts</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaskModelPipelineBase</span><span class="p">,</span> <span class="n">TaskPartitioningResult</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.infrastructure.statistics</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">write_model_call_statistics</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">grading_pipeline.validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_partitioned_tasks</span><span class="p">,</span> <span class="n">validate_tasks</span>
+
+
+<div class="viewcode-block" id="PartitioningPaths">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.task_partitioning.PartitioningPaths">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PartitioningPaths</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bündelt die Ausgabeziele eines Dokumentlaufs, ohne sie anzulegen.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        raw: Zusammengeführtes JSON aller partitionierten Hauptaufgaben.</span>
+<span class="sd">        cache: Eingabeidentität und Pfade der bereits fertigen Hauptaufgaben.</span>
+<span class="sd">        input: Zusammenstellung aller gerenderten Einzeleingaben zur Kontrolle.</span>
+<span class="sd">        responses: Ordner für Modellantworten und Einzelnachweise.</span>
+<span class="sd">        tasks: Ordner für die Markdown-Dateien der einzelnen Aufgaben.</span>
+<span class="sd">        export: Gemeinsamer Markdown-Export des Dokuments.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">raw</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">reviewed</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">cache</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="nb">input</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">responses</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">tasks</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">export</span><span class="p">:</span> <span class="n">Path</span></div>
+
+
+
+<div class="viewcode-block" id="PartitionTaskArtifacts">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.task_partitioning.PartitionTaskArtifacts">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PartitionTaskArtifacts</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Beschreibt die festen Dateinamen einer Hauptaufgabe im Antwortordner.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        response: Vollständige serialisierte LangChain-Antwort.</span>
+<span class="sd">        raw: JSON der geprüften Partition.</span>
+<span class="sd">        statistics: Statistiken des Modellaufrufs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">response</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">raw</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">statistics</span><span class="p">:</span> <span class="n">Path</span></div>
+
+
+
+<div class="viewcode-block" id="PartitioningSource">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.task_partitioning.PartitioningSource">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PartitioningSource</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hält validierte Hauptaufgaben und daraus erzeugte Modellinputs.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        path: Pfad zum JSON der vorausgehenden Aufgabenextraktion.</span>
+<span class="sd">        document_title: Unverändert übernommener Dokumenttitel, gegebenenfalls ``None``.</span>
+<span class="sd">        document_type: Validierter Dokumenttyp der Quelle.</span>
+<span class="sd">        tasks: Validierte, unveränderte Quellaufgaben.</span>
+<span class="sd">        task_inputs: Gerenderter Input je Aufgabe, in derselben Reihenfolge wie ``tasks``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">document_title</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="n">task_inputs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="PartitioningRunSetup">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.task_partitioning.PartitioningRunSetup">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PartitioningRunSetup</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hält den Kontext, den alle Hauptaufgaben eines Laufs gemeinsam benötigen.</span>
+
+<span class="sd">    ``frozen=True`` verhindert nur die Neuzuweisung von Feldern; die enthaltenen</span>
+<span class="sd">    Listen und Dictionaries sind dadurch nicht tiefgehend unveränderlich.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        document_dir: Absolut aufgelöster Dokumentordner.</span>
+<span class="sd">        source: Geladene Quelle mit Dokumentdaten und gerenderten Einzeleingaben.</span>
+<span class="sd">        paths: Ziele der Gesamtartefakte und Ausgabeordner.</span>
+<span class="sd">        cache_identity: Modellidentität dieses Laufs.</span>
+<span class="sd">        old_records: Passende Cache-Einträge, indiziert nach Index und Input-Hash.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">source</span><span class="p">:</span> <span class="n">PartitioningSource</span>
+    <span class="n">paths</span><span class="p">:</span> <span class="n">PartitioningPaths</span>
+    <span class="n">cache_identity</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">old_records</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span></div>
+
+
+
+<div class="viewcode-block" id="PartitionedTaskOutcome">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.task_partitioning.PartitionedTaskOutcome">[Doku]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PartitionedTaskOutcome</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Gibt die drei Beiträge einer erfolgreich abgeschlossenen Hauptaufgabe zurück.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        task: Validierte Partition für das zusammengeführte Ergebnis.</span>
+<span class="sd">        record: Minimale Eingabeidentität für den nächsten Cache-Zwischenstand.</span>
+<span class="sd">        from_cache: Ob das Ergebnis ohne Modellaufruf geladen wurde.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">task</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">record</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">from_cache</span><span class="p">:</span> <span class="nb">bool</span></div>
+
+
+
+<div class="viewcode-block" id="TaskPartitioningPipeline">
+<a class="viewcode-back" href="../../../api/public.html#grading_pipeline.extraction.task_partitioning.TaskPartitioningPipeline">[Doku]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskPartitioningPipeline</span><span class="p">(</span><span class="n">TaskModelPipelineBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Partitioniert pro Hauptaufgabe einmalig; Inhaltsabweichungen werden nur gemeldet.&quot;&quot;&quot;</span>
+
+    <span class="n">source_filename</span> <span class="o">=</span> <span class="n">TASK_PARTITIONING_ARTIFACTS</span><span class="o">.</span><span class="n">source</span>
+    <span class="n">reviewed_source_filename</span> <span class="o">=</span> <span class="n">TASK_EXTRACTION_ARTIFACTS</span><span class="o">.</span><span class="n">reviewed_json</span>
+    <span class="n">source_label</span> <span class="o">=</span> <span class="s2">&quot;JSON der vollstaendigen Aufgabenextraktion&quot;</span>
+    <span class="n">tasks_dirname</span> <span class="o">=</span> <span class="n">TASK_PARTITIONING_ARTIFACTS</span><span class="o">.</span><span class="n">tasks_dir</span>
+    <span class="n">export_filename</span> <span class="o">=</span> <span class="n">TASK_PARTITIONING_ARTIFACTS</span><span class="o">.</span><span class="n">export_markdown</span>
+    <span class="n">operation</span> <span class="o">=</span> <span class="s2">&quot;Aufgabenpartitionierung&quot;</span>
+    <span class="n">input_artifact_filename</span> <span class="o">=</span> <span class="n">TASK_PARTITIONING_ARTIFACTS</span><span class="o">.</span><span class="n">input_markdown</span>
+    <span class="n">response_dirname</span> <span class="o">=</span> <span class="n">TASK_PARTITIONING_ARTIFACTS</span><span class="o">.</span><span class="n">responses_dir</span>
+
+<div class="viewcode-block" id="TaskPartitioningPipeline.extract">
+<a class="viewcode-back" href="../../../api/public.html#grading_pipeline.extraction.task_partitioning.TaskPartitioningPipeline.extract">[Doku]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">extract</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskPartitioningResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Partitioniert alle Quellaufgaben und schreibt Einzel- und Gesamtausgaben.</span>
+
+<span class="sd">        Für jede Hauptaufgabe wird ein passender Cache-Kandidat verwendet oder ein</span>
+<span class="sd">        Modellaufruf ausgeführt. Nach jeder erfolgreichen Hauptaufgabe wird der</span>
+<span class="sd">        bisherige Cache vollständig geschrieben.</span>
+<span class="sd">        Erst nach der letzten Hauptaufgabe entstehen Gesamt-JSON und Markdown-Exporte.</span>
+<span class="sd">        Ein Fehler stoppt den Lauf; frühere Einzelnachweise bleiben</span>
+<span class="sd">        erhalten und können bei einem späteren Cache-Lauf wiederverwendet werden.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            document_dir: Ordner mit dem JSON der vorausgehenden Aufgabenextraktion.</span>
+<span class="sd">            output_dir: Optionaler separater Ausgabeordner. Ohne Angabe wird</span>
+<span class="sd">                ``document_dir`` auch als Ausgabeordner verwendet.</span>
+<span class="sd">            overwrite: Entfernt vorhandene Partitionsausgaben einschließlich des</span>
+<span class="sd">                Antwortordners. Eine dadurch gelöschte Antwort ist kein Cache-Treffer.</span>
+<span class="sd">            use_cache: Liest vorhandene Cache-Metadaten und prüft die Einzelnachweise.</span>
+<span class="sd">                Auch Cache-Läufe erstellen Gesamtartefakte und Markdown erneut.</span>
+<span class="sd">                Ohne beide Optionen sind vorhandene Partitionsausgaben ein Fehler.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Ergebnis mit Exportpfaden und Anzahl der obersten Hauptaufgaben, nicht der</span>
+<span class="sd">            Unteraufgaben. ``from_cache`` ist nur bei einer nicht leeren, vollständig</span>
+<span class="sd">            ohne neue Modellversuche verarbeiteten Quelle wahr.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: Wenn die Quelldatei fehlt.</span>
+<span class="sd">            FileExistsError: Wenn vorhandene Ausgaben weder ersetzt noch als Cache</span>
+<span class="sd">                berücksichtigt werden dürfen.</span>
+<span class="sd">            ValueError: Bei ungültiger Quelle oder nicht akzeptierbarer Endpartition.</span>
+<span class="sd">            OSError: Wenn das Lesen, Schreiben oder Entfernen von Artefakten scheitert.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            Providerfehler werden nicht abgefangen und brechen den Lauf ebenfalls ab.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_partitioning_run</span><span class="p">(</span>
+            <span class="n">document_dir</span><span class="o">=</span><span class="n">document_dir</span><span class="p">,</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="n">output_dir</span><span class="p">,</span>
+            <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">,</span>
+            <span class="n">use_cache</span><span class="o">=</span><span class="n">use_cache</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">cache_metadata_path</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">cache</span>
+        <span class="n">cache_identity</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">cache_identity</span>
+        <span class="n">new_records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">partitioned_tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">cache_hits</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="n">source_task</span><span class="p">,</span> <span class="n">task_input</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+            <span class="nb">zip</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">tasks</span><span class="p">,</span> <span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">task_inputs</span><span class="p">),</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">):</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_partition_task</span><span class="p">(</span>
+                <span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">,</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+                <span class="n">source_task</span><span class="o">=</span><span class="n">source_task</span><span class="p">,</span>
+                <span class="n">task_input</span><span class="o">=</span><span class="n">task_input</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">partitioned_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">outcome</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>
+            <span class="n">new_records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">outcome</span><span class="o">.</span><span class="n">record</span><span class="p">)</span>
+            <span class="n">cache_hits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">outcome</span><span class="o">.</span><span class="n">from_cache</span><span class="p">)</span>
+            <span class="n">write_cache_document</span><span class="p">(</span>
+                <span class="n">cache_metadata_path</span><span class="p">,</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">cache_identity</span><span class="p">,</span> <span class="s2">&quot;tasks&quot;</span><span class="p">:</span> <span class="n">new_records</span><span class="p">},</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_finalize_partitioning_run</span><span class="p">(</span>
+            <span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">,</span>
+            <span class="n">partitioned_tasks</span><span class="o">=</span><span class="n">partitioned_tasks</span><span class="p">,</span>
+            <span class="n">cache_hits</span><span class="o">=</span><span class="n">cache_hits</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_finalize_partitioning_run</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">run</span><span class="p">:</span> <span class="n">PartitioningRunSetup</span><span class="p">,</span>
+        <span class="n">partitioned_tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+        <span class="n">cache_hits</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">bool</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TaskPartitioningResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Schließt einen vollständig erfolgreichen Lauf ab.</span>
+
+<span class="sd">        Schreibt Gesamt-JSON und rendert anschließend Markdown. Schreibfehler werden</span>
+<span class="sd">        weitergereicht; bereits erzeugte Dateien werden nicht zurückgerollt.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            run: Gemeinsame Quelldaten und Ausgabeziele.</span>
+<span class="sd">            partitioned_tasks: Akzeptierte Hauptaufgaben in Quellreihenfolge.</span>
+<span class="sd">            cache_hits: Cache-Status der Hauptaufgaben in derselben Reihenfolge.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Öffentliches Ergebnis; ``from_cache`` ist nur für einen nicht leeren Lauf</span>
+<span class="sd">            wahr, dessen Hauptaufgaben ausschließlich Cache-Treffer waren.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_aggregate_partition_artifacts</span><span class="p">(</span>
+            <span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">,</span>
+            <span class="n">partitioned_tasks</span><span class="o">=</span><span class="n">partitioned_tasks</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">write_task_markdown_artifacts</span><span class="p">(</span>
+            <span class="n">partitioned_tasks</span><span class="p">,</span>
+            <span class="n">tasks_dir</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">tasks</span><span class="p">,</span>
+            <span class="n">export_path</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">export</span><span class="p">,</span>
+            <span class="n">render</span><span class="o">=</span><span class="n">render_partitioned_task</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Aufgabenexport gespeichert: </span><span class="si">{</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">export</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span><span class="s2">&quot;Aufgabenpartitionierung abgeschlossen.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TaskPartitioningResult</span><span class="p">(</span>
+            <span class="n">document_dir</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">document_dir</span><span class="p">,</span>
+            <span class="n">combined_markdown_path</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">export</span><span class="p">,</span>
+            <span class="n">extraction_json_path</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span>
+            <span class="n">task_count</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">partitioned_tasks</span><span class="p">),</span>
+            <span class="n">from_cache</span><span class="o">=</span><span class="nb">bool</span><span class="p">(</span><span class="n">cache_hits</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="n">cache_hits</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_aggregate_partition_artifacts</span><span class="p">(</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">run</span><span class="p">:</span> <span class="n">PartitioningRunSetup</span><span class="p">,</span>
+        <span class="n">partitioned_tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Schreibt die zusammengeführte Partition als JSON-Datei.</span>
+
+<span class="sd">        ``run`` liefert Titel, Dokumenttyp und Zielpfade. ``partitioned_tasks`` wird</span>
+<span class="sd">        unter ``tasks`` im Gesamt-JSON gespeichert. Die Methode validiert die</span>
+<span class="sd">        übergebenen Ergebnisse nicht erneut und aktualisiert nicht den Cache.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">write_json</span><span class="p">(</span>
+            <span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;document_title&quot;</span><span class="p">:</span> <span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">document_title</span><span class="p">,</span>
+                <span class="s2">&quot;document_type&quot;</span><span class="p">:</span> <span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">document_type</span><span class="p">,</span>
+                <span class="s2">&quot;tasks&quot;</span><span class="p">:</span> <span class="n">partitioned_tasks</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_partition_task</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">run</span><span class="p">:</span> <span class="n">PartitioningRunSetup</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">source_task</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">task_input</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PartitionedTaskOutcome</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Verwendet einen gültigen Cache oder eine Modellantwort pro Hauptaufgabe.&quot;&quot;&quot;</span>
+        <span class="n">stem</span> <span class="o">=</span> <span class="n">task_filename</span><span class="p">(</span>
+            <span class="n">index</span><span class="p">,</span> <span class="n">node_label</span><span class="p">(</span><span class="n">source_task</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;task_</span><span class="si">{</span><span class="n">index</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">removesuffix</span><span class="p">(</span><span class="s2">&quot;.md&quot;</span><span class="p">)</span>
+        <span class="n">artifacts</span> <span class="o">=</span> <span class="n">PartitionTaskArtifacts</span><span class="p">(</span>
+            <span class="n">response</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">responses</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stem</span><span class="si">}</span><span class="s2">.response.json&quot;</span><span class="p">,</span>
+            <span class="n">raw</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">responses</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stem</span><span class="si">}</span><span class="s2">.raw.json&quot;</span><span class="p">,</span>
+            <span class="n">statistics</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">responses</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stem</span><span class="si">}</span><span class="s2">.statistics.json&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">prompt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prompt_template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="n">task_input</span><span class="p">)</span>
+        <span class="n">input_sha256</span> <span class="o">=</span> <span class="n">sha256_text</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="n">run</span><span class="o">.</span><span class="n">old_records</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">index</span><span class="p">,</span> <span class="n">input_sha256</span><span class="p">))</span>
+        <span class="n">response_path</span> <span class="o">=</span> <span class="n">artifacts</span><span class="o">.</span><span class="n">response</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">load_partitioned_task</span><span class="p">(</span>
+            <span class="n">record</span><span class="o">=</span><span class="n">record</span><span class="p">,</span>
+            <span class="n">raw_json_path</span><span class="o">=</span><span class="n">artifacts</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span>
+            <span class="n">validator</span><span class="o">=</span><span class="k">lambda</span> <span class="n">data</span><span class="p">:</span> <span class="n">validate_partitioned_tasks</span><span class="p">(</span>
+                <span class="n">data</span><span class="p">,</span> <span class="n">expected_document_type</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">document_type</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">from_cache</span> <span class="o">=</span> <span class="n">task</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">from_cache</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hauptaufgabe </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">tasks</span><span class="p">)</span><span class="si">}</span><span class="s2"> aus Cache: </span><span class="si">{</span><span class="n">source_task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">tasks</span><span class="p">)</span>
+            <span class="n">response</span><span class="p">,</span> <span class="n">started_at</span> <span class="o">=</span> <span class="n">invoke_json_model</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+                <span class="n">prompt</span><span class="p">,</span>
+                <span class="n">progress</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">,</span>
+                <span class="n">heartbeat_label</span><span class="o">=</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Aufgabenpartitionierung </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2"> beim Modell&quot;</span>
+                <span class="p">),</span>
+                <span class="n">result_label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Aufgabe </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">write_json</span><span class="p">(</span><span class="n">response_path</span><span class="p">,</span> <span class="n">response_artifact</span><span class="p">(</span><span class="n">response</span><span class="p">))</span>
+            <span class="n">write_model_call_statistics</span><span class="p">(</span>
+                <span class="n">artifacts</span><span class="o">.</span><span class="n">statistics</span><span class="p">,</span>
+                <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+                <span class="n">response</span><span class="o">=</span><span class="n">response</span><span class="p">,</span>
+                <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;task_partitioning&quot;</span><span class="p">,</span>
+                <span class="n">unit</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="n">index</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">node_label</span><span class="p">(</span><span class="n">source_task</span><span class="p">,</span> <span class="n">stem</span><span class="p">)},</span>
+                <span class="n">model_input</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+                <span class="n">started_at</span><span class="o">=</span><span class="n">started_at</span><span class="p">,</span>
+                <span class="n">warn</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">warn</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assess_partition_response</span><span class="p">(</span>
+                <span class="n">response_text</span><span class="p">(</span><span class="n">response</span><span class="p">),</span> <span class="n">document_type</span><span class="o">=</span><span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">document_type</span><span class="p">,</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">write_json</span><span class="p">(</span><span class="n">artifacts</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s2">&quot;document_title&quot;</span><span class="p">:</span> <span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">document_title</span><span class="p">,</span>
+                <span class="s2">&quot;document_type&quot;</span><span class="p">:</span> <span class="n">run</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">document_type</span><span class="p">,</span>
+                <span class="s2">&quot;tasks&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">task</span><span class="p">],</span>
+            <span class="p">})</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;index&quot;</span><span class="p">:</span> <span class="n">index</span><span class="p">,</span> <span class="s2">&quot;input_sha256&quot;</span><span class="p">:</span> <span class="n">input_sha256</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">PartitionedTaskOutcome</span><span class="p">(</span>
+            <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span> <span class="n">record</span><span class="o">=</span><span class="n">record</span><span class="p">,</span> <span class="n">from_cache</span><span class="o">=</span><span class="n">from_cache</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_partitioning_run</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+        <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PartitioningRunSetup</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lädt die Quelle und bereitet alle gemeinsam verwendeten Laufdaten vor.</span>
+
+<span class="sd">        Der Dokumentordner wird absolut aufgelöst. Bei ``use_cache`` werden alte</span>
+<span class="sd">        Cache-Metadaten vor der Ausgabebereinigung gelesen. Danach wird das gemeinsame</span>
+<span class="sd">        Kontrollartefakt aus den Einzeleingaben geschrieben und der Antwortordner</span>
+<span class="sd">        angelegt. Nur zur aktuellen Modellidentität passende Cache-Datensätze werden</span>
+<span class="sd">        in den zurückgegebenen Kontext übernommen; der fertige Prompt wird je Aufgabe</span>
+<span class="sd">        separat gehasht.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            document_dir: Quellordner der vollständigen Aufgabenextraktion.</span>
+<span class="sd">            output_dir: Optionaler separater Zielordner der Partitionierung.</span>
+<span class="sd">            overwrite: Entfernt auch vorhandene Antwortartefakte.</span>
+<span class="sd">            use_cache: Erlaubt das Lesen alter Cache-Metadaten; ohne ``overwrite``</span>
+<span class="sd">                bleiben die Einzelnachweise für die spätere Trefferprüfung erhalten.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Vorbereiteter Kontext mit parallel angeordneten Quellaufgaben und Inputs.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: Wenn die Aufgabenquelle fehlt.</span>
+<span class="sd">            FileExistsError: Wenn Ausgaben ohne Ersetzungs- oder Cache-Erlaubnis existieren.</span>
+<span class="sd">            ValueError: Wenn die Quelle leer oder strukturell ungültig ist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">document_dir</span> <span class="o">=</span> <span class="n">document_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_partitioning_source</span><span class="p">(</span><span class="n">document_dir</span><span class="p">)</span>
+        <span class="n">resolved_output_dir</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">output_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">document_dir</span>
+        <span class="p">)</span>
+        <span class="n">resolved_output_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_partitioning_paths</span><span class="p">(</span><span class="n">resolved_output_dir</span><span class="p">)</span>
+        <span class="n">old_cache</span> <span class="o">=</span> <span class="n">read_cache_json_object</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">cache</span><span class="p">)</span> <span class="k">if</span> <span class="n">use_cache</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_partitioning_outputs</span><span class="p">(</span>
+            <span class="n">paths</span><span class="o">=</span><span class="n">paths</span><span class="p">,</span>
+            <span class="n">overwrite</span><span class="o">=</span><span class="n">overwrite</span><span class="p">,</span>
+            <span class="n">use_cache</span><span class="o">=</span><span class="n">use_cache</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_input_artifact</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">---</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">task_inputs</span><span class="p">))</span>
+        <span class="n">paths</span><span class="o">.</span><span class="n">responses</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">cache_identity</span> <span class="o">=</span> <span class="n">model_identity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">json_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PartitioningRunSetup</span><span class="p">(</span>
+            <span class="n">document_dir</span><span class="o">=</span><span class="n">resolved_output_dir</span><span class="p">,</span>
+            <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span>
+            <span class="n">paths</span><span class="o">=</span><span class="n">paths</span><span class="p">,</span>
+            <span class="n">cache_identity</span><span class="o">=</span><span class="n">cache_identity</span><span class="p">,</span>
+            <span class="n">old_records</span><span class="o">=</span><span class="n">partition_cache_records</span><span class="p">(</span><span class="n">old_cache</span><span class="p">,</span> <span class="n">cache_identity</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_partitioning_source</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PartitioningSource</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Liest und validiert die Aufgabenquelle und rendert pro Hauptaufgabe einen Input.</span>
+
+<span class="sd">        Gesucht wird ``self.source_filename`` innerhalb von ``document_dir``.</span>
+<span class="sd">        Die Validierung verändert das geparste Dictionary nicht; die</span>
+<span class="sd">        Quelldatei selbst bleibt unverändert. Der zurückgegebene Quelltext ist der</span>
+<span class="sd">        gelesene, außen bereinigte Text und nicht eine erneute JSON-Serialisierung.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Quelle mit Dokumentmetadaten, validierten Hauptaufgaben und je einem</span>
+<span class="sd">            zugehörigen Modellinput in Quellreihenfolge. Es werden keine Dateien geschrieben.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: Wenn die konfigurierte Quelldatei nicht existiert.</span>
+<span class="sd">            ValueError: Wenn sie leer ist, kein JSON-Objekt enthält oder die</span>
+<span class="sd">                Aufgabenstruktur beziehungsweise der Dokumenttyp ungültig ist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">source_path</span><span class="p">,</span> <span class="n">source_content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_source_text</span><span class="p">(</span><span class="n">document_dir</span><span class="p">)</span>
+
+        <span class="n">source_data</span> <span class="o">=</span> <span class="n">parse_extracted_tasks_json</span><span class="p">(</span><span class="n">source_content</span><span class="p">)</span>
+        <span class="n">validate_tasks</span><span class="p">(</span><span class="n">source_data</span><span class="p">)</span>
+        <span class="n">source_tasks</span> <span class="o">=</span> <span class="n">source_data</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">]</span>
+        <span class="n">document_title</span> <span class="o">=</span> <span class="n">source_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;document_title&quot;</span><span class="p">)</span>
+        <span class="n">document_type</span> <span class="o">=</span> <span class="n">source_data</span><span class="p">[</span><span class="s2">&quot;document_type&quot;</span><span class="p">]</span>
+        <span class="n">task_inputs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">render_partitioning_task_input</span><span class="p">(</span>
+                <span class="n">document_title</span><span class="o">=</span><span class="n">document_title</span><span class="p">,</span>
+                <span class="n">document_type</span><span class="o">=</span><span class="n">document_type</span><span class="p">,</span>
+                <span class="n">task</span><span class="o">=</span><span class="n">task</span><span class="p">,</span>
+                <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+                <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">source_tasks</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">task</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">source_tasks</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="n">PartitioningSource</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">source_path</span><span class="p">,</span>
+            <span class="n">document_title</span><span class="o">=</span><span class="n">document_title</span><span class="p">,</span>
+            <span class="n">document_type</span><span class="o">=</span><span class="n">document_type</span><span class="p">,</span>
+            <span class="n">tasks</span><span class="o">=</span><span class="n">source_tasks</span><span class="p">,</span>
+            <span class="n">task_inputs</span><span class="o">=</span><span class="n">task_inputs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_partitioning_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PartitioningPaths</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Verknüpft ``document_dir`` mit den zentral definierten Artefaktnamen.</span>
+
+<span class="sd">        Liefert einen ``PartitioningPaths``-Container, ohne Pfade aufzulösen,</span>
+<span class="sd">        Dateien zu prüfen oder Verzeichnisse anzulegen. Der Aufrufer übergibt</span>
+<span class="sd">        im normalen Lauf bereits den absolut aufgelösten Dokumentordner.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">PartitioningPaths</span><span class="p">(</span>
+            <span class="n">raw</span><span class="o">=</span><span class="n">document_dir</span> <span class="o">/</span> <span class="n">TASK_PARTITIONING_ARTIFACTS</span><span class="o">.</span><span class="n">raw_json</span><span class="p">,</span>
+            <span class="n">reviewed</span><span class="o">=</span><span class="n">document_dir</span> <span class="o">/</span> <span class="n">TASK_PARTITIONING_ARTIFACTS</span><span class="o">.</span><span class="n">reviewed_json</span><span class="p">,</span>
+            <span class="n">cache</span><span class="o">=</span><span class="n">document_dir</span> <span class="o">/</span> <span class="n">TASK_PARTITIONING_ARTIFACTS</span><span class="o">.</span><span class="n">cache_json</span><span class="p">,</span>
+            <span class="nb">input</span><span class="o">=</span><span class="n">document_dir</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_artifact_filename</span><span class="p">,</span>
+            <span class="n">responses</span><span class="o">=</span><span class="n">document_dir</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_dirname</span><span class="p">,</span>
+            <span class="n">tasks</span><span class="o">=</span><span class="n">document_dir</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">tasks_dirname</span><span class="p">,</span>
+            <span class="n">export</span><span class="o">=</span><span class="n">document_dir</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">export_filename</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_partitioning_outputs</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">paths</span><span class="p">:</span> <span class="n">PartitioningPaths</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+        <span class="n">use_cache</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prüft Ausgabekonflikte und entfernt vorhandene Partitionsartefakte.</span>
+
+<span class="sd">        ``paths`` bestimmt die betroffenen Gesamtdateien, den Aufgabenordner und</span>
+<span class="sd">        den Antwortordner. Ohne ``overwrite`` und ``use_cache`` genügt ein einziges</span>
+<span class="sd">        vorhandenes Ziel für einen Fehler. Mit ``overwrite`` werden Gesamtdateien,</span>
+<span class="sd">        Aufgabenordner und Antwortordner entfernt. Bei ausschließlich ``use_cache``</span>
+<span class="sd">        bleiben die Einzelnachweise im Antwortordner erhalten, während Gesamtdateien</span>
+<span class="sd">        einschließlich Cache-Datei und Aufgabenordner gelöscht werden.</span>
+
+<span class="sd">        Deshalb muss der Aufrufer Cache-Metadaten vor diesem Schritt einlesen.</span>
+<span class="sd">        Die Quelldatei gehört nicht zu den bereinigten Zielen.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileExistsError: Wenn vorhandene Ausgaben nicht bearbeitet werden dürfen.</span>
+<span class="sd">            OSError: Wenn eine Datei oder ein Ausgabeordner nicht entfernt werden kann.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">aggregate_paths</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">cache</span><span class="p">,</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">input</span><span class="p">,</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">export</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">overwrite</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">use_cache</span><span class="p">:</span>
+            <span class="n">existing</span> <span class="o">=</span> <span class="p">[</span><span class="n">path</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">aggregate_paths</span> <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">()]</span>
+            <span class="n">existing</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                <span class="n">path</span>
+                <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">responses</span><span class="p">,</span> <span class="n">paths</span><span class="o">.</span><span class="n">tasks</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">existing</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span>
+                    <span class="s2">&quot;Ergebnisse der Aufgabenpartitionierung existieren bereits. &quot;</span>
+                    <span class="s2">&quot;Nutze --overwrite zum Ersetzen.&quot;</span>
+                <span class="p">)</span>
+        <span class="k">if</span> <span class="n">overwrite</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_outputs</span><span class="p">(</span><span class="n">aggregate_paths</span><span class="p">,</span> <span class="n">paths</span><span class="o">.</span><span class="n">tasks</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">reviewed</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">missing_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">paths</span><span class="o">.</span><span class="n">responses</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">responses</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">use_cache</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_outputs</span><span class="p">(</span><span class="n">aggregate_paths</span><span class="p">,</span> <span class="n">paths</span><span class="o">.</span><span class="n">tasks</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_assess_partition_response</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Prüft das Format direkt; meldet Inhalts- und Metadatenabweichungen ohne Änderung.&quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">parse_model_json_object</span><span class="p">(</span>
+            <span class="n">content</span><span class="p">,</span> <span class="n">response_label</span><span class="o">=</span><span class="s2">&quot;LLM-Antwort&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">validate_partitioned_tasks</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">expected_document_type</span><span class="o">=</span><span class="n">document_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">])</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hauptaufgabe </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">: Das Modell muss genau eine Hauptaufgabe ausgeben.&quot;</span><span class="p">)</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;tasks&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">task</span></div>
+
+
+<div class="viewcode-block" id="parse_extracted_tasks_json">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.task_partitioning.parse_extracted_tasks_json">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_extracted_tasks_json</span><span class="p">(</span><span class="n">source_json</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Liest ``source_json`` mit dem Standard-JSON-Parser als Dictionary ein.</span>
+
+<span class="sd">    Anders als beim Parsing von Modellantworten werden weder Markdown-Zäune</span>
+<span class="sd">    entfernt noch eingebettete Objekte gesucht. Die Funktion prüft nur die</span>
+<span class="sd">    JSON-Syntax und den obersten Typ; fachliche Felder validiert der Aufrufer.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Neu geparstes JSON-Objekt ohne Prüfung seines Aufgabenschemas.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Bei ungültiger JSON-Syntax oder einem anderen obersten JSON-Typ.</span>
+<span class="sd">            Syntaxfehler werden als Ursache der verständlicheren Meldung erhalten.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">source_json</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Das JSON der Aufgabenextraktion ist ungueltig: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Das JSON der Aufgabenextraktion ist kein JSON-Objekt.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">data</span></div>
+
+
+<div class="viewcode-block" id="render_partitioning_task_input">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.task_partitioning.render_partitioning_task_input">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render_partitioning_task_input</span><span class="p">(</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">document_title</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="n">document_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">task</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">total</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rahmt genau eine Quellaufgabe als eigenständig verständlichen Modellinput ein.</span>
+
+<span class="sd">    Dokument- und Aufgabenmetadaten werden als JSON-Werte geschrieben, damit etwa</span>
+<span class="sd">    ``None`` und Sonderzeichen eindeutig dargestellt sind. Der Markdown-Inhalt</span>
+<span class="sd">    wird von einer redundanten Aufgabenüberschrift bereinigt und zwischen festen</span>
+<span class="sd">    Markern eingefügt. Der Input enthält weder andere Aufgaben noch die Promptvorlage.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        document_title: Dokumenttitel als JSON-serialisierbarer Wert.</span>
+<span class="sd">        document_type: Bereits validierter Dokumenttyp.</span>
+<span class="sd">        task: Validierte Quellaufgabe mit ``markdown`` und ihren Metadaten.</span>
+<span class="sd">        index: Einsbasierte Position der Hauptaufgabe.</span>
+<span class="sd">        total: Gesamtzahl der Quellaufgaben.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Gerahmter Text zum Einsetzen in den Platzhalter ``{{ content }}``.</span>
+<span class="sd">        Das übergebene Aufgaben-Dictionary wird nicht verändert.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: Wenn ein Metadatenwert nicht JSON-serialisierbar ist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">task_id</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">),</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">source_label</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_label&quot;</span><span class="p">),</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">),</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;points&quot;</span><span class="p">),</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">markdown</span> <span class="o">=</span> <span class="n">node_text</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;markdown&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;# Eingabe fuer die Hauptaufgabenpartitionierung&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;DOKUMENTTITEL_JSON: </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">document_title</span><span class="p">,</span><span class="w"> </span><span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;DOKUMENTTYP_JSON: </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">document_type</span><span class="p">,</span><span class="w"> </span><span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;EINHEIT_INDEX: </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2"> VON </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;&lt;&lt;&lt; EINHEIT BEGINN &gt;&gt;&gt;&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;ID_JSON: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;SOURCE_LABEL_JSON: </span><span class="si">{</span><span class="n">source_label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;TITEL_JSON: </span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;PUNKTE_JSON: </span><span class="si">{</span><span class="n">points</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;MARKDOWN_BEGINN&quot;</span><span class="p">,</span>
+            <span class="n">markdown</span><span class="p">,</span>
+            <span class="s2">&quot;MARKDOWN_ENDE&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;&lt;&lt;&lt; EINHEIT ENDE &gt;&gt;&gt;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="render_partitioned_task">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.task_partitioning.render_partitioned_task">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render_partitioned_task</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rendert eine validierte oberste Hauptaufgabe einschließlich aller Unteraufgaben.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        task: Partitionierte Aufgabe mit ``points`` sowie optionalem Titel,</span>
+<span class="sd">            Einleitungstext, Unteraufgaben und Schlusstext.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Markdown mit einer Überschrift auf Ebene zwei, anschließend Einleitung,</span>
+<span class="sd">        rekursiv gerenderten Unteraufgaben und Schlusstext. Äußere Leerzeichen</span>
+<span class="sd">        werden entfernt; es wird keine Datei geschrieben und ``task`` nicht verändert.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">task_id</span> <span class="o">=</span> <span class="n">node_label</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;Aufgabe&quot;</span><span class="p">)</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">render_heading</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">),</span> <span class="n">task</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;points&quot;</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">2</span><span class="p">)]</span>
+    <span class="n">introduction</span> <span class="o">=</span> <span class="n">node_text</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;introduction_markdown&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">introduction</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">introduction</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">subtask</span> <span class="ow">in</span> <span class="n">child_nodes</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;Hauptaufgabe&quot;</span><span class="p">):</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">render_subtask</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">closing</span> <span class="o">=</span> <span class="n">node_text</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="s2">&quot;closing_markdown&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">closing</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">closing</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="render_subtask">
+<a class="viewcode-back" href="../../../api/developer/pipelines.html#grading_pipeline.extraction.task_partitioning.render_subtask">[Doku]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">render_subtask</span><span class="p">(</span><span class="n">subtask</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">depth</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sammelt Markdown-Blöcke einer Unteraufgabe in Tiefensuchreihenfolge.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        subtask: Validierter Knoten mit ``points``, optionalem Markdown und Kindern.</span>
+<span class="sd">        depth: Tiefe relativ zur obersten Aufgabe; direkte Kinder beginnen bei eins.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Flache Liste aus Überschrift, eigenem Inhalt und Blöcken aller Nachkommen.</span>
+<span class="sd">        Die Überschrift verwendet ``min(2 + depth, 6)``; die Rekursion läuft auch</span>
+<span class="sd">        jenseits der sechsten Überschriftenebene weiter. Eingabeknoten bleiben unverändert.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">heading_level</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="n">depth</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+    <span class="n">subtask_id</span> <span class="o">=</span> <span class="n">node_label</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="s2">&quot;Teil&quot;</span><span class="p">)</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">render_heading</span><span class="p">(</span>
+            <span class="n">subtask_id</span><span class="p">,</span>
+            <span class="n">subtask</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">),</span>
+            <span class="n">subtask</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;points&quot;</span><span class="p">),</span>
+            <span class="n">level</span><span class="o">=</span><span class="n">heading_level</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">markdown</span> <span class="o">=</span> <span class="n">node_text</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="s2">&quot;markdown&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">markdown</span><span class="p">:</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">markdown</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">child_nodes</span><span class="p">(</span><span class="n">subtask</span><span class="p">,</span> <span class="n">subtask_id</span><span class="p">):</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">render_subtask</span><span class="p">(</span><span class="n">child</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="n">depth</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">parts</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Modul-Quellcode</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

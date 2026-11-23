@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Nutzungsleitfaden &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=245627df"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="genindex.html" />
+    <link rel="search" title="Suche" href="search.html" />
+    <link rel="next" title="CLI-Referenz" href="cli.html" />
+    <link rel="prev" title="GradingPipeline" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="nutzungsleitfaden">
+<h1>Nutzungsleitfaden<a class="headerlink" href="#nutzungsleitfaden" title="Link to this heading">¶</a></h1>
+<p>Der Beispieldatensatz enthält eine fiktive Kurzantwortaufgabe, eine
+Musterlösung und eine unvollständige studentische Antwort. Unter
+<code class="docutils literal notranslate"><span class="pre">examples/kurzantwort/documents/</span></code> liegen die drei Eingabebilder.
+<code class="docutils literal notranslate"><span class="pre">examples/kurzantwort/prepared/</span></code> enthält von Hand erstellte Aufgabenbäume,
+mit denen sich Validierung, Rubric-Erzeugung und Bewertung direkt starten lassen.</p>
+<p>Für die Transkription braucht man ein Modell, das Bilder verarbeiten kann.
+Das Ollama-Modell <code class="docutils literal notranslate"><span class="pre">qwen3-vl:8b-instruct</span></code> kann sowohl die Bilder lesen als
+auch die anschließenden Textschritte ausführen. Starte den lokalen
+Ollama-Server und lade das Modell mit <code class="docutils literal notranslate"><span class="pre">ollama</span> <span class="pre">pull</span> <span class="pre">qwen3-vl:8b-instruct</span></code>.
+Andere Verbindungen beschreibt die <a class="reference internal" href="cli.html"><span class="doc">CLI-Referenz</span></a>.</p>
+<section id="dokumente-aufbereiten">
+<h2>Dokumente aufbereiten<a class="headerlink" href="#dokumente-aufbereiten" title="Link to this heading">¶</a></h2>
+<p>Für jedes Dokument die drei Verarbeitungsschritte nacheinander ausführen
+und anschließend die erzeugten Artefakte mit <code class="docutils literal notranslate"><span class="pre">validate</span></code> prüfen.
+Für Musterlösung und studentische Lösung jeweils Bildname, Ausgabeordner und
+<code class="docutils literal notranslate"><span class="pre">--document-type</span></code> durch <code class="docutils literal notranslate"><span class="pre">reference_solution</span></code> beziehungsweise
+<code class="docutils literal notranslate"><span class="pre">student_solution</span></code> ersetzen.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python main.py extract --input examples/kurzantwort/documents/assignment.png --output-dir work/kurzantwort/assignment --document-type assignment --model qwen3-vl:8b-instruct</span>
+<span class="go">python main.py extract-tasks --input work/kurzantwort/assignment --document-type assignment --model qwen3-vl:8b-instruct</span>
+<span class="go">python main.py partition-tasks --input work/kurzantwort/assignment --model qwen3-vl:8b-instruct</span>
+<span class="go">python main.py validate --input work/kurzantwort/assignment</span>
+</pre></div>
+</div>
+<p>Nach der Transkription den Seitentext auf ausgelassene Inhalte prüfen. Nach der
+Aufgabenextraktion die erkannten Hauptaufgaben kontrollieren. Nach der
+Partitionierung in allen drei Dokumenten Reihenfolge und Anzahl der Knoten auf
+jeder Ebene vergleichen. Die Bewertung ordnet Knoten anhand ihrer Position im
+Baum zu. Die Maximalpunkte für bewertbare Blätter stammen aus der Aufgabenstellung.
+Die Dateinamen für manuelle Korrekturen stehen unter <a class="reference internal" href="artifacts.html"><span class="doc">Artefakte und Wiederanlauf</span></a>.</p>
+</section>
+<section id="optional-rubrics-erzeugen">
+<h2>Optional Rubrics erzeugen<a class="headerlink" href="#optional-rubrics-erzeugen" title="Link to this heading">¶</a></h2>
+<p>Das Textmodell erhält die Aufgabenstellung und die strukturgleiche Musterlösung.
+Die Rubrics werden pro bewertbarem Blatt erzeugt und lassen sich vor der
+Bewertung prüfen. Für die Bewertung kann der erzeugte Ordner mit
+<code class="docutils literal notranslate"><span class="pre">--rubrics-dir</span> <span class="pre">work/kurzantwort/rubrics</span></code> übergeben werden.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python main.py create-rubrics --assignment-dir work/kurzantwort/assignment --reference-solution-dir work/kurzantwort/reference_solution --output-dir work/kurzantwort/rubrics --model qwen3-vl:8b-instruct</span>
+</pre></div>
+</div>
+</section>
+<section id="losung-bewerten">
+<h2>Lösung bewerten<a class="headerlink" href="#losung-bewerten" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">grade</span></code> verwendet mindestens Aufgabenstellung und studentische Lösung.
+Das Beispiel bezieht auch die Musterlösung ein und läuft ohne Rubrics.
+Für die Bewertung mit den zuvor erzeugten Rubrics ergänze
+<code class="docutils literal notranslate"><span class="pre">--rubrics-dir</span> <span class="pre">work/kurzantwort/rubrics</span></code>.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python main.py grade --assignment-dir work/kurzantwort/assignment --reference-solution-dir work/kurzantwort/reference_solution --student-solution-dir work/kurzantwort/student_solution --output-dir work/kurzantwort/grading --model qwen3-vl:8b-instruct</span>
+<span class="go">python main.py validate --input work/kurzantwort/grading</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">04_grading_report.md</span></code> fasst Bewertungen und Punkte zusammen.
+<code class="docutils literal notranslate"><span class="pre">05_student_feedback.md</span></code> enthält die Rückmeldungen je Bewertungseinheit.
+Für einen Einstieg ab der Bewertung können die drei Eingabeverzeichnisse
+auch auf die mitgelieferten Aufgabenbäume unter
+<code class="docutils literal notranslate"><span class="pre">examples/kurzantwort/prepared/</span></code> zeigen.</p>
+</section>
+<section id="zusatzkontext-einer-teilaufgabe-zuordnen">
+<h2>Zusatzkontext einer Teilaufgabe zuordnen<a class="headerlink" href="#zusatzkontext-einer-teilaufgabe-zuordnen" title="Link to this heading">¶</a></h2>
+<p>Lege in <code class="docutils literal notranslate"><span class="pre">work/kurzantwort/context/</span></code> die UTF-8-Datei <code class="docutils literal notranslate"><span class="pre">kontext.md</span></code> mit
+dem gewünschten Zusatztext an. Für das Beispiel reicht der Satz
+„Bibliotheken legen Leihfristen und Rückgaberegeln in ihrer Benutzungsordnung
+fest.“ Speichere daneben <code class="docutils literal notranslate"><span class="pre">context_map.json</span></code> mit diesem Inhalt.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;contexts&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;target_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tasks[0].subtasks[0]&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;files&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;kontext.md&quot;</span><span class="p">]},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;target_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tasks[0].subtasks[1]&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;files&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Die Pfade bezeichnen die Teilaufgaben a) und b) des vorbereiteten Beispiels.
+Die Datei gilt hier nur für a). Das Manifest enthält für jedes bewertbare
+Blatt einen Eintrag. Dateipfade sind relativ zum Manifest und bleiben in
+dessen Verzeichnis.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python main.py grade --model qwen3-vl:8b-instruct --assignment-dir examples/kurzantwort/prepared/assignment --reference-solution-dir examples/kurzantwort/prepared/reference_solution --student-solution-dir examples/kurzantwort/prepared/student_solution --context-map work/kurzantwort/context/context_map.json --output-dir work/kurzantwort/grading-context</span>
+</pre></div>
+</div>
+</section>
+<section id="nach-manueller-korrektur-erneut-bewerten">
+<h2>Nach manueller Korrektur erneut bewerten<a class="headerlink" href="#nach-manueller-korrektur-erneut-bewerten" title="Link to this heading">¶</a></h2>
+<p>Kopiere die partitionierte studentische Lösung in einen Arbeitsordner und
+speichere die korrigierte Fassung mit dem Zusatz <code class="docutils literal notranslate"><span class="pre">.reviewed</span></code>.</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nb">New-Item</span> <span class="n">-ItemType</span> <span class="n">Directory</span> <span class="n">-Force</span> <span class="n">work</span><span class="p">/</span><span class="n">kurzantwort</span><span class="p">/</span><span class="n">student-review</span>
+<span class="nb">Copy-Item</span> <span class="n">examples</span><span class="p">/</span><span class="n">kurzantwort</span><span class="p">/</span><span class="n">prepared</span><span class="p">/</span><span class="n">student_solution</span><span class="p">/</span><span class="n">06_task_partitioning</span><span class="p">.</span><span class="n">raw</span><span class="p">.</span><span class="n">json</span> <span class="n">work</span><span class="p">/</span><span class="n">kurzantwort</span><span class="p">/</span><span class="n">student-review</span><span class="p">/</span><span class="n">06_task_partitioning</span><span class="p">.</span><span class="n">raw</span><span class="p">.</span><span class="n">json</span>
+<span class="nb">Copy-Item</span> <span class="n">work</span><span class="p">/</span><span class="n">kurzantwort</span><span class="p">/</span><span class="n">student-review</span><span class="p">/</span><span class="n">06_task_partitioning</span><span class="p">.</span><span class="n">raw</span><span class="p">.</span><span class="n">json</span> <span class="n">work</span><span class="p">/</span><span class="n">kurzantwort</span><span class="p">/</span><span class="n">student-review</span><span class="p">/</span><span class="n">06_task_partitioning</span><span class="p">.</span><span class="n">reviewed</span><span class="p">.</span><span class="n">json</span>
+</pre></div>
+</div>
+<p>Korrigiere in der Reviewed-Datei beispielsweise einen Transkriptionsfehler
+im Feld <code class="docutils literal notranslate"><span class="pre">markdown</span></code> der betroffenen Teilaufgabe. Die Baumpositionen müssen
+weiter zur Aufgabenstellung passen. Den Aufbau der Dateien erklärt
+<a class="reference internal" href="json_formats.html"><span class="doc">JSON-Datenformate</span></a>. Prüfe den Ordner und starte dann die Bewertung mit
+diesem Eingabeordner.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">python main.py validate --input work/kurzantwort/student-review</span>
+<span class="go">python main.py grade --model qwen3-vl:8b-instruct --assignment-dir examples/kurzantwort/prepared/assignment --reference-solution-dir examples/kurzantwort/prepared/reference_solution --student-solution-dir work/kurzantwort/student-review --output-dir work/kurzantwort/grading-review</span>
+</pre></div>
+</div>
+<p>Die Bewertung liest bevorzugt <code class="docutils literal notranslate"><span class="pre">06_task_partitioning.reviewed.json</span></code>. Der
+eigene Ausgabeordner erlaubt es, den neuen Bericht mit einem vorherigen
+Bericht zu vergleichen.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Nutzungsleitfaden</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dokumente-aufbereiten">Dokumente aufbereiten</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#optional-rubrics-erzeugen">Optional Rubrics erzeugen</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#losung-bewerten">Lösung bewerten</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#zusatzkontext-einer-teilaufgabe-zuordnen">Zusatzkontext einer Teilaufgabe zuordnen</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#nach-manueller-korrektur-erneut-bewerten">Nach manueller Korrektur erneut bewerten</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API-Referenz</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="vorheriges Kapitel">GradingPipeline</a></li>
+      <li>Next: <a href="cli.html" title="nächstes Kapitel">CLI-Referenz</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/workflow.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

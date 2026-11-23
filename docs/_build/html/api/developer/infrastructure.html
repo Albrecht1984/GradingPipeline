@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Infrastruktur &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../genindex.html" />
+    <link rel="search" title="Suche" href="../../search.html" />
+    <link rel="next" title="Kommandozeilenschnittstelle" href="cli.html" />
+    <link rel="prev" title="Bewertungshilfsmodule" href="grading_support.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="infrastruktur">
+<h1>Infrastruktur<a class="headerlink" href="#infrastruktur" title="Link to this heading">¶</a></h1>
+<section id="module-grading_pipeline.infrastructure.hashing">
+<span id="hashfunktionen"></span><h2>Hashfunktionen<a class="headerlink" href="#module-grading_pipeline.infrastructure.hashing" title="Link to this heading">¶</a></h2>
+<p>Deterministische SHA-256-Hilfsfunktionen fuer Texte und Dateien.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.hashing.sha256_text">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.hashing.</span></span><span class="sig-name descname"><span class="pre">sha256_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">content</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/hashing.html#sha256_text"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.hashing.sha256_text" title="Link to this definition">¶</a></dt>
+<dd><p>Berechnet den SHA-256-Hash eines UTF-8-kodierten Textes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>content</strong> (<em>str</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.hashing.sha256_file">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.hashing.</span></span><span class="sig-name descname"><span class="pre">sha256_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/hashing.html#sha256_file"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.hashing.sha256_file" title="Link to this definition">¶</a></dt>
+<dd><p>Berechnet den SHA-256-Hash einer Datei in speicherschonenden Bloecken.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Path</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.infrastructure.json_io">
+<span id="json-ein-und-ausgabe"></span><h2>JSON-Ein- und Ausgabe<a class="headerlink" href="#module-grading_pipeline.infrastructure.json_io" title="Link to this heading">¶</a></h2>
+<p>Gemeinsame JSON-Ein- und Ausgabe mit klarer Fehlersemantik.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.json_io.LoadedJsonObject">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.json_io.</span></span><span class="sig-name descname"><span class="pre">LoadedJsonObject</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/json_io.html#LoadedJsonObject"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.json_io.LoadedJsonObject" title="Link to this definition">¶</a></dt>
+<dd><p>Enthaelt ein geparstes JSON-Objekt und seinen unveraenderten Quelltext.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>content</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.json_io.read_cache_json_object">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.json_io.</span></span><span class="sig-name descname"><span class="pre">read_cache_json_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/json_io.html#read_cache_json_object"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.json_io.read_cache_json_object" title="Link to this definition">¶</a></dt>
+<dd><p>Liest ein Cache-Objekt oder behandelt unbrauchbare Daten als Cache-Miss.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>Path</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>] | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.json_io.read_required_json_object">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.json_io.</span></span><span class="sig-name descname"><span class="pre">read_required_json_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/json_io.html#read_required_json_object"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.json_io.read_required_json_object" title="Link to this definition">¶</a></dt>
+<dd><p>Liest ein erforderliches JSON-Objekt und meldet die genaue Fehlerursache.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.json_io.read_required_json_document">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.json_io.</span></span><span class="sig-name descname"><span class="pre">read_required_json_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/json_io.html#read_required_json_document"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.json_io.read_required_json_document" title="Link to this definition">¶</a></dt>
+<dd><p>Liest ein erforderliches JSON-Objekt samt unveraendertem Quelltext.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#grading_pipeline.infrastructure.json_io.LoadedJsonObject" title="grading_pipeline.infrastructure.json_io.LoadedJsonObject"><em>LoadedJsonObject</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.json_io.write_json">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.json_io.</span></span><span class="sig-name descname"><span class="pre">write_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/json_io.html#write_json"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.json_io.write_json" title="Link to this definition">¶</a></dt>
+<dd><p>Schreibt ein eingeruecktes, standardkonformes JSON-Objekt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>data</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.json_io.write_json_atomic">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.json_io.</span></span><span class="sig-name descname"><span class="pre">write_json_atomic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/json_io.html#write_json_atomic"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.json_io.write_json_atomic" title="Link to this definition">¶</a></dt>
+<dd><p>Schreibt Standard-JSON atomar und entfernt temporaere Dateien bei Fehlern.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>data</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.infrastructure.task_nodes">
+<span id="aufgabenfelder-und-aufgabenbaume"></span><h2>Aufgabenfelder und Aufgabenbäume<a class="headerlink" href="#module-grading_pipeline.infrastructure.task_nodes" title="Link to this heading">¶</a></h2>
+<p>Liest Aufgabenfelder einheitlich, ohne Quelldaten zu ändern.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.task_nodes.text_or_empty">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.task_nodes.</span></span><span class="sig-name descname"><span class="pre">text_or_empty</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/task_nodes.html#text_or_empty"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.task_nodes.text_or_empty" title="Link to this definition">¶</a></dt>
+<dd><p>Liefert einen String unverändert und für alle anderen Typen Leertext.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>value</strong> (<em>Any</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.task_nodes.node_text">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.task_nodes.</span></span><span class="sig-name descname"><span class="pre">node_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/task_nodes.html#node_text"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.task_nodes.node_text" title="Link to this definition">¶</a></dt>
+<dd><p>Liest ein Textfeld eines Aufgabenknotens; typfremde Werte gelten als leer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>field</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.task_nodes.node_label">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.task_nodes.</span></span><span class="sig-name descname"><span class="pre">node_label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/task_nodes.html#node_label"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.task_nodes.node_label" title="Link to this definition">¶</a></dt>
+<dd><p>Liefert ID, sichtbare Bezeichnung, Titel oder einen stabilen Ersatztext.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>fallback</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.task_nodes.child_nodes">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.task_nodes.</span></span><span class="sig-name descname"><span class="pre">child_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/task_nodes.html#child_nodes"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.task_nodes.child_nodes" title="Link to this definition">¶</a></dt>
+<dd><p>Liest Unteraufgaben; fehlend oder null bedeutet eine leere Kinderliste.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>location</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[dict[str, <em>Any</em>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.task_nodes.joined_node_text">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.task_nodes.</span></span><span class="sig-name descname"><span class="pre">joined_node_text</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/task_nodes.html#joined_node_text"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.task_nodes.joined_node_text" title="Link to this definition">¶</a></dt>
+<dd><p>Verbindet die nichtleeren Textfelder eines Knotens zu Markdown.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>fields</strong> (<em>tuple</em><em>[</em><em>str</em><em>, </em><em>...</em><em>]</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.task_nodes.structural_path">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.task_nodes.</span></span><span class="sig-name descname"><span class="pre">structural_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/task_nodes.html#structural_path"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.task_nodes.structural_path" title="Link to this definition">¶</a></dt>
+<dd><p>Formatiert einen numerischen Baumpfad als lesbaren JSON-Pfad.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>tuple</em><em>[</em><em>int</em><em>, </em><em>...</em><em>]</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.extraction.rendering">
+<span id="rendering"></span><h2>Rendering<a class="headerlink" href="#module-grading_pipeline.extraction.rendering" title="Link to this heading">¶</a></h2>
+<p>Bereitet PDF- und Bilddateien als nummerierte Seitenartefakte vor.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.rendering.RenderedPage">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.rendering.</span></span><span class="sig-name descname"><span class="pre">RenderedPage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">page_number</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/extraction/rendering.html#RenderedPage"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.rendering.RenderedPage" title="Link to this definition">¶</a></dt>
+<dd><p>Beschreibt eine einsbasiert nummerierte, vorbereitete Dokumentseite.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>page_number</strong> (<em>int</em>)</p></li>
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>width</strong> (<em>int</em>)</p></li>
+<li><p><strong>height</strong> (<em>int</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.extraction.rendering.render_input">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.extraction.rendering.</span></span><span class="sig-name descname"><span class="pre">render_input</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pages_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">220</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/extraction/rendering.html#render_input"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.extraction.rendering.render_input" title="Link to this definition">¶</a></dt>
+<dd><p>Bereitet eine PDF- oder Bilddatei im angegebenen Seitenordner vor.</p>
+<p>PDFs werden vollständig und einsbasiert nummeriert als PNG gerendert.
+Unterstützte Einzelbilder werden unverändert unter einem normalisierten
+Seitennamen kopiert. Gleichnamige Zieldateien werden überschrieben;
+andere vorhandene Dateien im Seitenordner bleiben unberührt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source</strong> (<em>Path</em>) – Pfad zur vorhandenen PDF- oder Bilddatei.</p></li>
+<li><p><strong>pages_dir</strong> (<em>Path</em>) – Zielordner für die vorbereiteten Seitenbilder.</p></li>
+<li><p><strong>dpi</strong> (<em>int</em>) – Renderauflösung für PDFs; mindestens 72 dpi.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabe<span class="colon">:</span></dt>
+<dd class="field-even"><p>Die vorbereiteten Seiten in ihrer Dokumentreihenfolge.</p>
+</dd>
+<dt class="field-odd">Verursacht<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – Wenn <code class="docutils literal notranslate"><span class="pre">source</span></code> keine vorhandene Datei ist.</p></li>
+<li><p><strong>ValueError</strong> – Bei zu geringer Auflösung oder nicht unterstützter Endung.</p></li>
+<li><p><strong>RuntimeError</strong> – Wenn die benötigte PyMuPDF-Abhängigkeit fehlt.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[<a class="reference internal" href="#grading_pipeline.extraction.rendering.RenderedPage" title="grading_pipeline.extraction.rendering.RenderedPage"><em>RenderedPage</em></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.infrastructure.progress">
+<span id="fortschrittsanzeige"></span><h2>Fortschrittsanzeige<a class="headerlink" href="#module-grading_pipeline.infrastructure.progress" title="Link to this heading">¶</a></h2>
+<p>Stellt Heartbeat-Meldungen und eine gemeinsame Laufzeitformatierung bereit.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.progress.ProgressHeartbeat">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.progress.</span></span><span class="sig-name descname"><span class="pre">ProgressHeartbeat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">report</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/progress.html#ProgressHeartbeat"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.progress.ProgressHeartbeat" title="Link to this definition">¶</a></dt>
+<dd><p>Meldet waehrend eines blockierenden Modellaufrufs regelmaessig die Laufzeit.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>report</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>]</em>)</p></li>
+<li><p><strong>label</strong> (<em>str</em>)</p></li>
+<li><p><strong>interval</strong> (<em>float</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.progress.format_duration">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.progress.</span></span><span class="sig-name descname"><span class="pre">format_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seconds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/progress.html#format_duration"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.progress.format_duration" title="Link to this definition">¶</a></dt>
+<dd><p>Formatiert eine Laufzeit gerundet als Minuten- oder Stundenangabe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>seconds</strong> (<em>float</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.infrastructure.model_calls">
+<span id="textmodellaufrufe"></span><h2>Textmodellaufrufe<a class="headerlink" href="#module-grading_pipeline.infrastructure.model_calls" title="Link to this heading">¶</a></h2>
+<p>Gemeinsame LangChain-Modellaufrufe der Pipelinestufen.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.model_calls.MultimodalImage">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.model_calls.</span></span><span class="sig-name descname"><span class="pre">MultimodalImage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/model_calls.html#MultimodalImage"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.model_calls.MultimodalImage" title="Link to this definition">¶</a></dt>
+<dd><p>Bündelt Bilddatei und sichtbare ID eines Modellinputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_id</strong> (<em>str</em>)</p></li>
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.model_calls.MultimodalImageGroup">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.model_calls.</span></span><span class="sig-name descname"><span class="pre">MultimodalImageGroup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">images</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/model_calls.html#MultimodalImageGroup"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.model_calls.MultimodalImageGroup" title="Link to this definition">¶</a></dt>
+<dd><p>Bündelt aufeinanderfolgende Bilder derselben sichtbaren Quelle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>label</strong> (<em>str</em>)</p></li>
+<li><p><strong>images</strong> (<em>tuple</em><em>[</em><a class="reference internal" href="#grading_pipeline.infrastructure.model_calls.MultimodalImage" title="grading_pipeline.infrastructure.model_calls.MultimodalImage"><em>MultimodalImage</em></a><em>, </em><em>...</em><em>]</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.model_calls.invoke_json_model">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.model_calls.</span></span><span class="sig-name descname"><span class="pre">invoke_json_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">heartbeat_label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/model_calls.html#invoke_json_model"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.model_calls.invoke_json_model" title="Link to this definition">¶</a></dt>
+<dd><p>Ruft ein Modell im JSON-Modus auf und meldet Laufzeit und Antwortgröße.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>BaseChatModel</em>)</p></li>
+<li><p><strong>prompt</strong> (<em>str</em>)</p></li>
+<li><p><strong>progress</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>]</em>)</p></li>
+<li><p><strong>heartbeat_label</strong> (<em>str</em>)</p></li>
+<li><p><strong>result_label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[<em>AIMessage</em>, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.model_calls.invoke_vision_model">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.model_calls.</span></span><span class="sig-name descname"><span class="pre">invoke_vision_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_bytes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/model_calls.html#invoke_vision_model"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.model_calls.invoke_vision_model" title="Link to this definition">¶</a></dt>
+<dd><p>Ruft ein Modell mit einer eingebetteten Bildnachricht auf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>BaseChatModel</em>)</p></li>
+<li><p><strong>prompt</strong> (<em>str</em>)</p></li>
+<li><p><strong>image_bytes</strong> (<em>bytes</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>AIMessage</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.model_calls.invoke_multimodal_json_model">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.model_calls.</span></span><span class="sig-name descname"><span class="pre">invoke_multimodal_json_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_groups</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">heartbeat_label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">result_label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/model_calls.html#invoke_multimodal_json_model"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.model_calls.invoke_multimodal_json_model" title="Link to this definition">¶</a></dt>
+<dd><p>Ruft ein Vision-Modell mit explizit gruppierten Bildern auf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>BaseChatModel</em>)</p></li>
+<li><p><strong>prompt</strong> (<em>str</em>)</p></li>
+<li><p><strong>image_groups</strong> (<em>Sequence</em><em>[</em><a class="reference internal" href="#grading_pipeline.infrastructure.model_calls.MultimodalImageGroup" title="grading_pipeline.infrastructure.model_calls.MultimodalImageGroup"><em>MultimodalImageGroup</em></a><em>]</em>)</p></li>
+<li><p><strong>progress</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>]</em>)</p></li>
+<li><p><strong>heartbeat_label</strong> (<em>str</em>)</p></li>
+<li><p><strong>result_label</strong> (<em>str</em>)</p></li>
+<li><p><strong>json_mode</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[<em>AIMessage</em>, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.model_calls.invoke_chat_model">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.model_calls.</span></span><span class="sig-name descname"><span class="pre">invoke_chat_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">messages</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_mode</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/model_calls.html#invoke_chat_model"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.model_calls.invoke_chat_model" title="Link to this definition">¶</a></dt>
+<dd><p>Ruft ein LangChain-Modell mit dessen providerbezogenem JSON-Schalter auf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>BaseChatModel</em>)</p></li>
+<li><p><strong>messages</strong> (<em>Sequence</em><em>[</em><em>BaseMessage</em><em>]</em>)</p></li>
+<li><p><strong>json_mode</strong> (<em>bool</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>AIMessage</em></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.model_calls.detect_image_media_type">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.model_calls.</span></span><span class="sig-name descname"><span class="pre">detect_image_media_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_bytes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/model_calls.html#detect_image_media_type"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.model_calls.detect_image_media_type" title="Link to this definition">¶</a></dt>
+<dd><p>Erkennt den MIME-Typ unterstützter Bilder anhand ihrer Dateisignatur.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>image_bytes</strong> (<em>bytes</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.infrastructure.result_status">
+<span id="ergebnisstatus"></span><h2>Ergebnisstatus<a class="headerlink" href="#module-grading_pipeline.infrastructure.result_status" title="Link to this heading">¶</a></h2>
+<p>Gemeinsamer Ergebnistyp für vollständig und unvollständig verarbeitete Läufe.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.result_status.result_status">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.result_status.</span></span><span class="sig-name descname"><span class="pre">result_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_failures</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/result_status.html#result_status"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.result_status.result_status" title="Link to this definition">¶</a></dt>
+<dd><p>Leitet den typisierten Gesamtstatus aus vorhandenen Fehlern ab.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>has_failures</strong> (<em>bool</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>Literal</em>[‚complete‘, ‚incomplete‘]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.infrastructure.statistics">
+<span id="statistiken"></span><h2>Statistiken<a class="headerlink" href="#module-grading_pipeline.infrastructure.statistics" title="Link to this heading">¶</a></h2>
+<p>Erzeugt portable Statistiken fuer eine Pipeline-Einheit.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.statistics.write_model_call_statistics">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.statistics.</span></span><span class="sig-name descname"><span class="pre">write_model_call_statistics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_input</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">started_at</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">complexity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/statistics.html#write_model_call_statistics"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.statistics.write_model_call_statistics" title="Link to this definition">¶</a></dt>
+<dd><p>Schreibt Statistiken; ein Nebenartefaktfehler stoppt die Pipeline nicht.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>)</p></li>
+<li><p><strong>model</strong> (<em>BaseChatModel</em>)</p></li>
+<li><p><strong>response</strong> (<em>AIMessage</em>)</p></li>
+<li><p><strong>stage</strong> (<em>str</em>)</p></li>
+<li><p><strong>unit</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>model_input</strong> (<em>str</em>)</p></li>
+<li><p><strong>started_at</strong> (<em>float</em>)</p></li>
+<li><p><strong>output_text</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>complexity</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>int</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>json_mode</strong> (<em>bool</em>)</p></li>
+<li><p><strong>warn</strong> (<em>Callable</em><em>[</em><em>[</em><em>str</em><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>] | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.statistics.timing_payload">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.statistics.</span></span><span class="sig-name descname"><span class="pre">timing_payload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metrics</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wall_seconds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/statistics.html#timing_payload"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.statistics.timing_payload" title="Link to this definition">¶</a></dt>
+<dd><p>Verbindet die gemessene Laufzeit mit normalisierten Providerzeiten.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>metrics</strong> (<a class="reference internal" href="models.html#grading_pipeline.models.responses.ModelMetrics" title="grading_pipeline.models.responses.ModelMetrics"><em>ModelMetrics</em></a>)</p></li>
+<li><p><strong>wall_seconds</strong> (<em>float</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, float | None]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.statistics.token_payload">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.statistics.</span></span><span class="sig-name descname"><span class="pre">token_payload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metrics</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/statistics.html#token_payload"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.statistics.token_payload" title="Link to this definition">¶</a></dt>
+<dd><p>Berechnet Zählwerte und Raten aus normalisierten Modellmetriken.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>metrics</strong> (<a class="reference internal" href="models.html#grading_pipeline.models.responses.ModelMetrics" title="grading_pipeline.models.responses.ModelMetrics"><em>ModelMetrics</em></a>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, int | float | None]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.statistics.model_payload">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.statistics.</span></span><span class="sig-name descname"><span class="pre">model_payload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">identity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout_seconds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/statistics.html#model_payload"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.statistics.model_payload" title="Link to this definition">¶</a></dt>
+<dd><p>Verbindet angeforderte Modellkonfiguration und tatsaechliche Modellkennung.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identity</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>metrics</strong> (<a class="reference internal" href="models.html#grading_pipeline.models.responses.ModelMetrics" title="grading_pipeline.models.responses.ModelMetrics"><em>ModelMetrics</em></a>)</p></li>
+<li><p><strong>timeout_seconds</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.infrastructure.statistics.rate">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.infrastructure.statistics.</span></span><span class="sig-name descname"><span class="pre">rate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seconds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/infrastructure/statistics.html#rate"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.infrastructure.statistics.rate" title="Link to this definition">¶</a></dt>
+<dd><p>Berechnet eine Rate, sofern Zaehler und positive Laufzeit vorliegen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>count</strong> (<em>int</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>seconds</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>float | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API-Referenz</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../public.html">Öffentliche API</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Entwicklerreferenz</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API-Referenz</a><ul>
+  <li><a href="index.html">Entwicklerreferenz</a><ul>
+      <li>Previous: <a href="grading_support.html" title="vorheriges Kapitel">Bewertungshilfsmodule</a></li>
+      <li>Next: <a href="cli.html" title="nächstes Kapitel">Kommandozeilenschnittstelle</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../../_sources/api/developer/infrastructure.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

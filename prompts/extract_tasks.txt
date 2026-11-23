@@ -1,0 +1,39 @@
+Du erhaeltst das vollstaendige, seitenweise erzeugte Markdown {{ document_description }}.
+
+Segmentiere den Dokumentinhalt in Hauptaufgaben. Jede Hauptaufgabe umfasst den vollstaendigen Inhalt, der erkennbar zu derselben uebergeordneten Aufgabe gehoert. Bestimme die Grenzen anhand von Inhalt, sichtbarer Gliederung und Layoutinformationen, nicht anhand fester Bezeichnungen oder Nummerierungsmuster.
+
+## Regeln
+
+- Du sollst keine Inhalte erfinden, kuerzen, ergaenzen oder umformulieren.
+- {{ editing_prohibition }}
+- Erhalte vorhandenes Markdown, LaTeX sowie alle Rohtext-, Objekt- und Unsicherheitsplatzhalter.
+- Gib jede uebergeordnete Aufgabe beziehungsweise deren Loesung genau einmal mit allen zugehoerigen Teilaufgaben beziehungsweise Teilloesungen aus und teile sie nicht in eigenstaendige Hauptaufgaben auf.
+- Ein Seitenumbruch allein beginnt oder beendet keine Hauptaufgabe.
+- Uebernimm auch einleitenden Kontext, Definitionen, Bedingungen, Materialien, Formeln, Tabellen, Abbildungen, Hinweise und andere Inhalte, wenn sie erkennbar zur Hauptaufgabe gehoeren.
+- Gilt ein Material erkennbar fuer mehrere Hauptaufgaben, fuege es jeder davon zu, damit jede ausgegebene Hauptaufgabe vollstaendig verstaendlich bleibt.
+- Entferne Inhalte, die nicht zu einer konkreten Hauptaufgabe gehoeren, etwa Deckblattinformationen, Inhaltsverzeichnisse, allgemeine Hinweise, Kopf- und Fusszeilen sowie alleinstehende Seitenzahlen.
+- Uebernimm die sichtbare Kennzeichnung der zugehoerigen Aufgabe wortgetreu als `id`. Reine Loesungszusaetze gehoeren nur in `source_label`. Ist keine Aufgabenkennzeichnung erkennbar, verwende `task_001`, `task_002` usw.
+- Uebernimm die vollstaendige sichtbare Aufgaben- oder Loesungskennzeichnung wortgetreu als `source_label`. Ist keine vorhanden, setze `source_label` auf `null`.
+- Uebernimm einen sichtbaren Aufgaben- beziehungsweise Loesungstitel wortgetreu. Ist keiner vorhanden, setze `title` auf `null`.
+- {{ points_policy }}
+- Beginne das Markdown jeder Hauptaufgabe mit `## ` und ihrer `id`. Ersetze damit eine vorhandene Hauptaufgabenueberschrift; der Titel und bei `assignment` die Gesamtpunktzahl werden ausserhalb des Markdown gespeichert.
+- Gib ausschliesslich ein einzelnes gueltiges JSON-Objekt aus.
+
+## Ausgabeformat
+
+{
+  "document_title": "wortgetreuer Dokumenttitel oder null",
+  "document_type": "{{ document_type }}",
+  "tasks": [
+    {
+      "id": "Aufgabenkennzeichnung oder technische ID",
+      "source_label": "sichtbare Aufgaben- oder Loesungskennzeichnung oder null",
+      "title": "sichtbarer Titel oder null",
+      "points": {{ points_example }},
+      "markdown": "## Aufgaben-ID\n\nVollstaendiger, unveraenderter Inhalt der Hauptaufgabe"
+    }
+  ]
+}
+
+DOKUMENT:
+{{ content }}

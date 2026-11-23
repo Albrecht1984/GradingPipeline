@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+
+<html lang="de" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Datenmodelle und Strukturen &#8212; GradingPipeline – Dokumentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=245627df"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/translations.js?v=9bf55d28"></script>
+    <link rel="index" title="Stichwortverzeichnis" href="../../genindex.html" />
+    <link rel="search" title="Suche" href="../../search.html" />
+    <link rel="next" title="Artefakte und Cache" href="artifacts_cache.html" />
+    <link rel="prev" title="Validierung" href="validation.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="datenmodelle-und-strukturen">
+<h1>Datenmodelle und Strukturen<a class="headerlink" href="#datenmodelle-und-strukturen" title="Link to this heading">¶</a></h1>
+<section id="module-grading_pipeline.grading.schema">
+<span id="bewertungsschema"></span><h2>Bewertungsschema<a class="headerlink" href="#module-grading_pipeline.grading.schema" title="Link to this heading">¶</a></h2>
+<p>Typisierte Ergebnisobjekte der Bewertungspipeline.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.schema.AssessmentItem">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.schema.</span></span><span class="sig-name descname"><span class="pre">AssessmentItem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comment</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/schema.html#AssessmentItem"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.schema.AssessmentItem" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Beschreibt einen vom Modell bewerteten Einzelaspekt einer Aufgabe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> (<em>str</em>)</p></li>
+<li><p><strong>description</strong> (<em>str</em>)</p></li>
+<li><p><strong>points</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>max_points</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>comment</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="grading_pipeline.grading.schema.AssessmentItem.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/schema.html#AssessmentItem.to_dict"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.schema.AssessmentItem.to_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Serialisiert den Bewertungsaspekt für die JSON-Ausgabe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.schema.TaskGrading">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.schema.</span></span><span class="sig-name descname"><span class="pre">TaskGrading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">assessment_items</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">summary</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">student_feedback</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/schema.html#TaskGrading"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.schema.TaskGrading" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Enthält die validierte Bewertung einer strukturell bestimmten Blattaufgabe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target_path</strong> (<em>str</em>)</p></li>
+<li><p><strong>display_label</strong> (<em>str</em>)</p></li>
+<li><p><strong>points</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>max_points</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>assessment_items</strong> (<em>tuple</em><em>[</em><a class="reference internal" href="#grading_pipeline.grading.schema.AssessmentItem" title="grading_pipeline.grading.schema.AssessmentItem"><em>AssessmentItem</em></a><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>summary</strong> (<em>str</em>)</p></li>
+<li><p><strong>student_feedback</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="grading_pipeline.grading.schema.TaskGrading.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/schema.html#TaskGrading.to_dict"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.schema.TaskGrading.to_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Serialisiert die Aufgabenbewertung für Ergebnisdateien.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.schema.FailedTaskGrading">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.schema.</span></span><span class="sig-name descname"><span class="pre">FailedTaskGrading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_tag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/schema.html#FailedTaskGrading"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.schema.FailedTaskGrading" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Kennzeichnet ein nicht bewertetes Ziel samt optionalem Ausfallgrund.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target_path</strong> (<em>str</em>)</p></li>
+<li><p><strong>display_label</strong> (<em>str</em>)</p></li>
+<li><p><strong>failure_tag</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="grading_pipeline.grading.schema.FailedTaskGrading.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/schema.html#FailedTaskGrading.to_dict"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.schema.FailedTaskGrading.to_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Serialisiert den fehlgeschlagenen Bewertungsversuch.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.schema.GradingDocumentResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.schema.</span></span><span class="sig-name descname"><span class="pre">GradingDocumentResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">student_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failed_tasks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/schema.html#GradingDocumentResult"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.schema.GradingDocumentResult" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Fasst alle Aufgabenbewertungen einer studentischen Abgabe zusammen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>student_id</strong> (<em>str</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>points</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>max_points</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>task_results</strong> (<em>tuple</em><em>[</em><a class="reference internal" href="#grading_pipeline.grading.schema.TaskGrading" title="grading_pipeline.grading.schema.TaskGrading"><em>TaskGrading</em></a><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>failed_tasks</strong> (<em>tuple</em><em>[</em><a class="reference internal" href="#grading_pipeline.grading.schema.FailedTaskGrading" title="grading_pipeline.grading.schema.FailedTaskGrading"><em>FailedTaskGrading</em></a><em>, </em><em>...</em><em>]</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="grading_pipeline.grading.schema.GradingDocumentResult.status">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">status</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'complete'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'incomplete'</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#grading_pipeline.grading.schema.GradingDocumentResult.status" title="Link to this definition">¶</a></dt>
+<dd><p>Gibt an, ob alle Aufgaben formal gültig bewertet wurden.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="grading_pipeline.grading.schema.GradingDocumentResult.to_dict">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/schema.html#GradingDocumentResult.to_dict"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.schema.GradingDocumentResult.to_dict" title="Link to this definition">¶</a></dt>
+<dd><p>Serialisiert das Gesamtergebnis einschließlich Zählwerten und Status.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, <em>Any</em>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-grading_pipeline.grading.structure">
+<span id="bewertungsstruktur"></span><h2>Bewertungsstruktur<a class="headerlink" href="#module-grading_pipeline.grading.structure" title="Link to this heading">¶</a></h2>
+<p>Strukturelles Ausrichten der Dokumentbaeume zu Bewertungseinheiten.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.GradingUnit">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">GradingUnit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_string</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">assignment_node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">assignment_context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">student_solution_node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">student_solution_context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_solution_node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_solution_context</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rubric</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#GradingUnit"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.GradingUnit" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Buendelt alle Inhalte einer einzelnen zu bewertenden Blattaufgabe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>tuple</em><em>[</em><em>int</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>path_string</strong> (<em>str</em>)</p></li>
+<li><p><strong>display_label</strong> (<em>str</em>)</p></li>
+<li><p><strong>max_points</strong> (<em>float</em><em> | </em><em>None</em>)</p></li>
+<li><p><strong>assignment_node</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>assignment_context</strong> (<em>str</em>)</p></li>
+<li><p><strong>student_solution_node</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>student_solution_context</strong> (<em>str</em>)</p></li>
+<li><p><strong>reference_solution_node</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>reference_solution_context</strong> (<em>str</em>)</p></li>
+<li><p><strong>rubric</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.ParallelNodeLists">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">ParallelNodeLists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">assignment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">student_solution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_solution</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#ParallelNodeLists"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.ParallelNodeLists" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Haelt die parallel zu vergleichenden Knotenlisten der Dokumente.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>assignment</strong> (<em>Any</em>)</p></li>
+<li><p><strong>student_solution</strong> (<em>Any</em>)</p></li>
+<li><p><strong>reference_solution</strong> (<em>Any</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.AlignedNodes">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">AlignedNodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">assignment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">student_solution</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_solution</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#AlignedNodes"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.AlignedNodes" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Buendelt drei anhand ihrer Listenposition ausgerichtete Knoten.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>assignment</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>student_solution</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>reference_solution</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.TraversalState">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">TraversalState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">assignment_ancestors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">student_ancestors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_ancestors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#TraversalState"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.TraversalState" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Beschreibt Position, Vorfahren und Anzeigenamen der Rekursion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>parent_path</strong> (<em>tuple</em><em>[</em><em>int</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>assignment_ancestors</strong> (<em>tuple</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>student_ancestors</strong> (<em>tuple</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>reference_ancestors</strong> (<em>tuple</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>labels</strong> (<em>tuple</em><em>[</em><em>str</em><em>, </em><em>...</em><em>]</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.UnitCollection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">UnitCollection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rubric_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#UnitCollection"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.UnitCollection" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Sammelt Bewertungseinheiten und stellt die Rubrics nach Pfad bereit.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rubric_map</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>units</strong> (<em>list</em><em>[</em><a class="reference internal" href="#grading_pipeline.grading.structure.GradingUnit" title="grading_pipeline.grading.structure.GradingUnit"><em>GradingUnit</em></a><em>]</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.build_grading_units">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">build_grading_units</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">assignment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">student_solution</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_solution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rubrics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#build_grading_units"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.build_grading_units" title="Link to this definition">¶</a></dt>
+<dd><p>Erzeugt Bewertungseinheiten aus parallelen Dokumentbäumen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>assignment</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>student_solution</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>)</p></li>
+<li><p><strong>reference_solution</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>rubrics</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[<a class="reference internal" href="#grading_pipeline.grading.structure.GradingUnit" title="grading_pipeline.grading.structure.GradingUnit"><em>GradingUnit</em></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.compare_node_lists">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">compare_node_lists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_lists</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collection</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#compare_node_lists"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.compare_node_lists" title="Link to this definition">¶</a></dt>
+<dd><p>Vergleicht eine Rekursionsebene und sammelt ihre Blattziele.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node_lists</strong> (<a class="reference internal" href="#grading_pipeline.grading.structure.ParallelNodeLists" title="grading_pipeline.grading.structure.ParallelNodeLists"><em>ParallelNodeLists</em></a>)</p></li>
+<li><p><strong>state</strong> (<a class="reference internal" href="#grading_pipeline.grading.structure.TraversalState" title="grading_pipeline.grading.structure.TraversalState"><em>TraversalState</em></a>)</p></li>
+<li><p><strong>collection</strong> (<a class="reference internal" href="#grading_pipeline.grading.structure.UnitCollection" title="grading_pipeline.grading.structure.UnitCollection"><em>UnitCollection</em></a>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.align_node_lists">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">align_node_lists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node_lists</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#align_node_lists"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.align_node_lists" title="Link to this definition">¶</a></dt>
+<dd><p>Validiert parallele Listen und richtet ihre Knoten positionsweise aus.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node_lists</strong> (<a class="reference internal" href="#grading_pipeline.grading.structure.ParallelNodeLists" title="grading_pipeline.grading.structure.ParallelNodeLists"><em>ParallelNodeLists</em></a>)</p></li>
+<li><p><strong>location</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[<a class="reference internal" href="#grading_pipeline.grading.structure.AlignedNodes" title="grading_pipeline.grading.structure.AlignedNodes"><em>AlignedNodes</em></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.ensure_matching_node_count">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">ensure_matching_node_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">assignment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">counterpart</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">counterpart_label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#ensure_matching_node_count"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.ensure_matching_node_count" title="Link to this definition">¶</a></dt>
+<dd><p>Weist unterschiedliche Knotenzahlen zweier paralleler Listen zurueck.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>assignment</strong> (<em>list</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>counterpart</strong> (<em>list</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>location</strong> (<em>str</em>)</p></li>
+<li><p><strong>counterpart_label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.aligned_children">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">aligned_children</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_string</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#aligned_children"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.aligned_children" title="Link to this definition">¶</a></dt>
+<dd><p>Prueft die Knotentypen und liefert ausgerichtete Kinder eines Elternknotens.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nodes</strong> (<a class="reference internal" href="#grading_pipeline.grading.structure.AlignedNodes" title="grading_pipeline.grading.structure.AlignedNodes"><em>AlignedNodes</em></a>)</p></li>
+<li><p><strong>path_string</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#grading_pipeline.grading.structure.ParallelNodeLists" title="grading_pipeline.grading.structure.ParallelNodeLists"><em>ParallelNodeLists</em></a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.ensure_matching_node_kind">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">ensure_matching_node_kind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">assignment_children</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">counterpart_children</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_string</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">counterpart_label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#ensure_matching_node_kind"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.ensure_matching_node_kind" title="Link to this definition">¶</a></dt>
+<dd><p>Prueft, ob zwei ausgerichtete Knoten beide Blatt oder Elternknoten sind.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>assignment_children</strong> (<em>list</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>counterpart_children</strong> (<em>list</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>)</p></li>
+<li><p><strong>path_string</strong> (<em>str</em>)</p></li>
+<li><p><strong>counterpart_label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.build_grading_unit">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">build_grading_unit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rubric</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#build_grading_unit"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.build_grading_unit" title="Link to this definition">¶</a></dt>
+<dd><p>Erzeugt aus einem ausgerichteten Blatt eine Bewertungseinheit.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nodes</strong> (<a class="reference internal" href="#grading_pipeline.grading.structure.AlignedNodes" title="grading_pipeline.grading.structure.AlignedNodes"><em>AlignedNodes</em></a>)</p></li>
+<li><p><strong>state</strong> (<a class="reference internal" href="#grading_pipeline.grading.structure.TraversalState" title="grading_pipeline.grading.structure.TraversalState"><em>TraversalState</em></a>)</p></li>
+<li><p><strong>path</strong> (<em>tuple</em><em>[</em><em>int</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>labels</strong> (<em>tuple</em><em>[</em><em>str</em><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>rubric</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#grading_pipeline.grading.structure.GradingUnit" title="grading_pipeline.grading.structure.GradingUnit"><em>GradingUnit</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.required_node_list">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">required_node_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#required_node_list"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.required_node_list" title="Link to this definition">¶</a></dt>
+<dd><p>Validiert und typisiert eine Liste kanonischer Dokumentknoten.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>Any</em>)</p></li>
+<li><p><strong>location</strong> (<em>str</em>)</p></li>
+<li><p><strong>label</strong> (<em>str</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[dict[str, <em>Any</em>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.ancestor_context">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">ancestor_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nodes</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#ancestor_context"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.ancestor_context" title="Link to this definition">¶</a></dt>
+<dd><p>Fuegt die kontextgebenden Markdown-Felder aller Vorfahren zusammen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>nodes</strong> (<em>tuple</em><em>[</em><em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>, </em><em>...</em><em>]</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="grading_pipeline.grading.structure.build_rubric_map">
+<span class="sig-prename descclassname"><span class="pre">grading_pipeline.grading.structure.</span></span><span class="sig-name descname"><span class="pre">build_rubric_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/grading_pipeline/grading/structure.html#build_rubric_map"><span class="viewcode-link"><span class="pre">[Quellcode]</span></span></a><a class="headerlink" href="#grading_pipeline.grading.structure.build_rubric_map" title="Link to this definition">¶</a></dt>
+<dd><p>Indiziert Rubrics nach Zielpfad und weist doppelte Pfade zurueck.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameter<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] </em><em>| </em><em>None</em>)</p>
+</dd>
+<dt class="field-even">Rückgabetyp<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, dict[str, <em>Any</em>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">GradingPipeline</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Los" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../workflow.html">Nutzungsleitfaden</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli.html">CLI-Referenz</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../artifacts.html">Artefakte und Wiederanlauf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../json_formats.html">JSON-Datenformate</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API-Referenz</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../public.html">Öffentliche API</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Entwicklerreferenz</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API-Referenz</a><ul>
+  <li><a href="index.html">Entwicklerreferenz</a><ul>
+      <li>Previous: <a href="validation.html" title="vorheriges Kapitel">Validierung</a></li>
+      <li>Next: <a href="artifacts_cache.html" title="nächstes Kapitel">Artefakte und Cache</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../../_sources/api/developer/schemas.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
